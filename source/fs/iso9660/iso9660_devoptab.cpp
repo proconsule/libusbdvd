@@ -131,7 +131,10 @@ int       SWITCH_ISO9660FS::iso9660fs_fstat    (struct _reent *r, void *fd, stru
 	auto *priv_file = static_cast<SWITCH_ISO9660FSFile *>(fd);
     auto lk = std::scoped_lock(priv->session_mutex);
 	
-	iso9660fsstat_entry(&priv->currdirlist[priv_file->filelist_id],st);
+	//iso9660fsstat_entry(&priv->currdirlist[priv_file->filelist_id],st);
+	iso9660_dirlist_struct * _filedesc = priv->ISO9660FS->GetFileDescFromIDX(priv_file->filelist_id);
+	iso9660fsstat_entry(_filedesc,st);
+	
 	return 0;
 }
 

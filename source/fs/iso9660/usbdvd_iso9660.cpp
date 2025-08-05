@@ -553,7 +553,7 @@ int CUSBDVD_ISO9660FS::ReadData(iso9660_dirlist_struct * _filedesc,uint32_t pos,
 	
 	size_t firstsector =  _filedesc->lba + (pos/DATA_SECOTR_SIZE);
 	size_t offset_firstsector = pos%DATA_SECOTR_SIZE;
-	size_t lastsector = firstsector + (size-1/DATA_SECOTR_SIZE);
+	size_t lastsector = firstsector + (size/DATA_SECOTR_SIZE);
 	
 	size_t remread = size;
 	size_t buffosff = 0;
