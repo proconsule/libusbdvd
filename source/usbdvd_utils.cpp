@@ -20,14 +20,7 @@ void usbdvd_log(const char *fmt, ...){
 	va_end( arglist );
 	fflush(stdout);
 #else
-	auto lk = std::scoped_lock(log_mutex);
-	char outbuff[1024];
-	va_list arglist;
-	va_start( arglist, fmt );
-	vprintf( fmt, arglist );
-	std::vsnprintf(outbuff, sizeof outbuff, fmt, arglist);
-	va_end( arglist );
-	fflush(stdout);
+	
 	//NX_IGNORE_ARG(fmt);
 #endif
 }

@@ -417,7 +417,7 @@ void CUSBDVD_ISO9660FS::list_dir_iso9660(uint32_t sector, const std::string& pat
                 
                 int mypadding = 0;
                 if(record->name_length% 2 == 0)mypadding=mypadding+1;
-				/*
+				
                 const uint8_t* rr_ptr = name_ptr+record->name_length+mypadding;
                 rockridge_header_struct test_rr;
                 memcpy(&test_rr,rr_ptr,sizeof(test_rr));
@@ -473,8 +473,8 @@ void CUSBDVD_ISO9660FS::list_dir_iso9660(uint32_t sector, const std::string& pat
                     }
                     
                 }
-                */
-				
+                
+				/*
 				iso9660_dirlist_struct tmp;
                     tmp.name = filename;
                     tmp.size =  byte2u32_le(record->root_size_le);
@@ -493,7 +493,7 @@ void CUSBDVD_ISO9660FS::list_dir_iso9660(uint32_t sector, const std::string& pat
                     if (is_directory && filename != "" && byte2u32_le(record->root_lba_le) > 0) {
                         list_dir_iso9660(byte2u32_le(record->root_lba_le), full_path);
                     }
-				
+				*/
 				
             }
             
