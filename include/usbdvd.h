@@ -6,13 +6,16 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
 
 typedef struct{
+	bool mounted;
 	char disc_fstype[0x80];
 	char mountpoint[0x05];
 }usbdvd_fs_struct;
 
 typedef struct{
+	bool drive_found;
 	char vendor_id[0x8+1];
     char product_id[0x10+1];
     char product_revision[0x4+1];
@@ -71,9 +74,9 @@ public:
 	
 	std::string disctype;
 	
-	bool drive_found = false;
-	bool acd_init_ok = false;
-	bool datacd_init_ok = false;
+	//bool drive_found = false;
+	//bool acd_init_ok = false;
+	//bool datacd_init_ok = false;
 	bool fileimage = false;
 	//std::string mountpoint = "";
 	//std::string disc_fstype = "";

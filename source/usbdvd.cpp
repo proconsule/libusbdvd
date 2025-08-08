@@ -43,13 +43,13 @@ CUSBDVD::CUSBDVD(std::string _isofilepath){
 	
 	ISO9660FS = new CUSBDVD_ISO9660FS(isofilepath);
 	SWITCH_ISO9660DEVOPTAB = new SWITCH_ISO9660FS(ISO9660FS,"iso0","iso0:");
-	if(pseudofs_init && cdfs_init && usb_init)datacd_init_ok = true;
+	if(pseudofs_init && cdfs_init && usb_init)usbdvd_drive_ctx.fs.mounted = true;
 	
 	
 }
 
 CUSBDVD::CUSBDVD(){
-	
+	usbdvd_drive_ctx.drive_found = false;
 	
 	SWITCH_USB = new CSWITCH_USB();
 	if(SWITCH_USB->device_found){
@@ -70,6 +70,11 @@ CUSBDVD::CUSBDVD(){
 			memset(usbdvd_drive_ctx.product_id,0,sizeof(usbdvd_drive_ctx.product_id));
 			memset(usbdvd_drive_ctx.product_revision,0,sizeof(usbdvd_drive_ctx.product_revision));
 			memset(usbdvd_drive_ctx.serial_number,0,sizeof(usbdvd_drive_ctx.serial_number));
+			memset(usbdvd_drive_ctx.disc_type,0,sizeof(usbdvd_drive_ctx.disc_type));
+			
+			memset(usbdvd_drive_ctx.fs.mountpoint,0,sizeof(usbdvd_drive_ctx.fs.mountpoint));
+			memset(usbdvd_drive_ctx.fs.disc_fstype,0,sizeof(usbdvd_drive_ctx.fs.disc_fstype));
+			
 			
 			memcpy(usbdvd_drive_ctx.vendor_id,test.vendor_id,sizeof(test.vendor_id));
 			memcpy(usbdvd_drive_ctx.product_id,test.product_id,sizeof(test.product_id));
@@ -81,7 +86,7 @@ CUSBDVD::CUSBDVD(){
 			
 			ret = USB_SCSI->UsbDvdUnitReady(0);
 			drive_status = ret;
-			drive_found = true;
+			usbdvd_drive_ctx.drive_found = true;
 			
 			if(drive_status!=0)return;
 			
@@ -113,7 +118,7 @@ CUSBDVD::CUSBDVD(){
 			
 			}
 			
-			memcpy(usbdvd_drive_ctx.disc_type,disctype.c_str(),disctype.length());
+			strcpy(usbdvd_drive_ctx.disc_type,disctype.c_str());
 			
 			USB_SCSI->UsbDvdPreventMediumRemoval(0,1);
 			
@@ -153,12 +158,12 @@ CUSBDVD::CUSBDVD(){
 				
 				SWITCH_CDAUDIODEVOPTAB = new SWITCH_AUDIOCDFS(CDAUDIOFS,"acd0","acd0:");
 				pseudofs_init = true;
-				memcpy(usbdvd_drive_ctx.fs.mountpoint,"acd0:",strlen("acd0:"));
-				memcpy(usbdvd_drive_ctx.fs.disc_fstype,"CD Audio",strlen("CD Audio"));
+				strcpy(usbdvd_drive_ctx.fs.mountpoint,"acd0:");
+				strcpy(usbdvd_drive_ctx.fs.disc_fstype,"CD Audio");
 			
 				}
 				
-				if(pseudofs_init && cdfs_init && usb_init)acd_init_ok = true;
+				if(pseudofs_init && cdfs_init && usb_init)usbdvd_drive_ctx.fs.mounted = true;
 			}else if(myfstype == 2){
 				uint32_t mylba = ((toc.tracks[0].MIN*60)+toc.tracks[0].SEC)*75+toc.tracks[0].FRAME;
 				uint32_t nextlba = ((toc.tracks[1].MIN*60)+toc.tracks[1].SEC)*75+toc.tracks[1].FRAME;
@@ -168,17 +173,17 @@ CUSBDVD::CUSBDVD(){
 				
 				SWITCH_ISO9660DEVOPTAB = new SWITCH_ISO9660FS(ISO9660FS,"iso0","iso0:");
 				pseudofs_init = true;
-				memcpy(usbdvd_drive_ctx.fs.mountpoint,"iso0:",strlen("iso0:"));
+				strcpy(usbdvd_drive_ctx.fs.mountpoint,"iso0:");
 			
-				if(pseudofs_init && cdfs_init && usb_init)datacd_init_ok = true;
+				if(pseudofs_init && cdfs_init && usb_init)usbdvd_drive_ctx.fs.mounted = true;
 				if(ISO9660FS->isjoliet){
-					memcpy(usbdvd_drive_ctx.fs.disc_fstype,"ISO9660 + Joliet",strlen("ISO9660 + Joliet"));	
+					strcpy(usbdvd_drive_ctx.fs.disc_fstype,"ISO9660 + Joliet");	
 			
 				} else if(ISO9660FS->isrockridge){
-					memcpy(usbdvd_drive_ctx.fs.disc_fstype,"ISO9660 + RockRidge",strlen("ISO9660 + RockRidge"));
+					strcpy(usbdvd_drive_ctx.fs.disc_fstype,"ISO9660 + RockRidge");
 			
 				}else{
-					memcpy(usbdvd_drive_ctx.fs.disc_fstype,"ISO9660",strlen("ISO9660"));
+					strcpy(usbdvd_drive_ctx.fs.disc_fstype,"ISO9660");
 			
 				}
 				

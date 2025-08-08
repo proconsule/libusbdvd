@@ -26,20 +26,20 @@ int main(int argc, const char* const* argv) {
 	
 	CUSBDVD *testusbdvd = new CUSBDVD();
 	
-	printf("vendor_id: %s\r\n",testusbdvd->vendor_id.c_str());
-	printf("product_id: %s\r\n",testusbdvd->product_id.c_str());
-	printf("product_revision: %s\r\n",testusbdvd->product_revision.c_str());
-	printf("serial_number: %s\r\n",testusbdvd->serial_number.c_str());
-	printf("Disc Type: %s\r\n",testusbdvd->disctype.c_str());
+	usbdvd_drive_struct *drivectx = &testusbdvd->usbdvd_drive_ctx;
 	
 
+	printf("vendor_id: %s\r\n",drivectx->vendor_id);
+	printf("product_id: %s\r\n",drivectx->product_id);
+	printf("product_revision: %s\r\n",drivectx->product_revision);
+	printf("serial_number: %s\r\n",drivectx->serial_number);
+	printf("Disc Type: %s\r\n",drivectx->disc_type);
 	
-	if(testusbdvd->acd_init_ok || testusbdvd->datacd_init_ok){
-	
+	if(drivectx->fs.mounted){
+		printf("Disc FS: %s\r\n",drivectx->fs.disc_fstype);
 		struct dirent *ent;
 			DIR *dir;
-			std::string path = testusbdvd->mountpoint + std::string("/");
-			//std::string path = "iso0:/";
+			std::string path = drivectx->fs.mountpoint + std::string("/");
 			printf("PATH: %s\r\n",path.c_str());
 			if (!path.empty()) {
 				if ((dir = opendir(path.c_str())) != nullptr) {

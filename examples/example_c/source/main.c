@@ -31,6 +31,31 @@ int main(int argc, const char* const* argv) {
 	printf("product_revision: %s\r\n",drivectx->product_revision);
 	printf("serial_number: %s\r\n",drivectx->serial_number);
 	printf("Disc Type: %s\r\n",drivectx->disc_type);
+	char path[128];
+		sprintf(path,"%s/",drivectx->fs.mountpoint);
+		printf("PATH: %s\r\n",path);
+	
+	if(drivectx->fs.mounted){
+		printf("Disc FS: %s\r\n",drivectx->fs.disc_fstype);
+		struct dirent *ent;
+		char path[128];
+		sprintf(path,"%s/",drivectx->fs.mountpoint);
+		printf("PATH: %s\r\n",path);
+		DIR *d;
+		struct dirent *dir;
+		d = opendir(path);
+		if (d) {
+			while ((dir = readdir(d)) != NULL) {
+			printf("%s\n", dir->d_name);
+			}
+			closedir(d);
+		}
+		
+		}else{
+			printf("NO USB DVD FOUND\r\n");
+		}
+		
+	
 	
 	/*
 	CUSBDVD *testusbdvd = new CUSBDVD();
