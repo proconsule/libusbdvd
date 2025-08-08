@@ -7,8 +7,6 @@
 #include <switch.h>
 #include <mutex>
     
-	
-
 class CSWITCH_USB{
 public:
 	CSWITCH_USB();

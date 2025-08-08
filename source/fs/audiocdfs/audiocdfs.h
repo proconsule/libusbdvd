@@ -12,9 +12,6 @@
 
 #define CD_SECTOR_SIZE_AUDIO 2352
 
-
-
-    
 typedef struct WAV_HEADER {
     uint8_t RIFF[4] = {'R', 'I', 'F', 'F'};
     uint32_t ChunkSize;                     

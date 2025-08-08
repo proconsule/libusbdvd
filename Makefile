@@ -79,6 +79,11 @@ export HFILES	:=	$(addsuffix .h,$(subst .,_,$(BINFILES)))
 export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
 			-I$(CURDIR)/$(BUILD)
+			
+$(eval LIB_VERSION_MAJOR = $(shell grep 'define LIBUSBDVD_VERSION_MAJOR\b' include/usbdvd.h | tr -s [:blank:] | cut -d' ' -f3))
+$(eval LIB_VERSION_MINOR = $(shell grep 'define LIBUSBDVD_VERSION_MINOR\b' include/usbdvd.h | tr -s [:blank:] | cut -d' ' -f3))
+$(eval LIB_VERSION_MICRO = $(shell grep 'define LIBUSBDVD_VERSION_MICRO\b' include/usbdvd.h | tr -s [:blank:] | cut -d' ' -f3))
+$(eval LIB_VERSION = $(LIB_VERSION_MAJOR).$(LIB_VERSION_MINOR).$(LIB_VERSION_MICRO))
 
 .PHONY: clean all
 
@@ -109,12 +114,15 @@ lib/$(TARGET)d.a : lib debug $(SOURCES) $(INCLUDES)
 	-f $(CURDIR)/Makefile
 
 dist-bin: all
-	@tar --exclude=*~ -cjf $(TARGET).tar.bz2 include lib
+	@tar --exclude=*~ -cjf $(TARGET)-$(LIB_VERSION).tar.bz2 include lib
 
 dist-src:
-	@tar --exclude=*~ -cjf $(TARGET)-src.tar.bz2 include source Makefile
+	@tar --exclude=*~ -cjf $(TARGET)-$(LIB_VERSION)-src.tar.bz2 include source Makefile
 
 dist: dist-src dist-bin
+
+install: dist-bin
+	@bzip2 -cd $(TARGET)-$(LIB_VERSION).tar.bz2 | tar -xf - -C $(PORTLIBS) --exclude='*.md' --exclude='*.nro'
 
 #---------------------------------------------------------------------------------
 clean:

@@ -76,9 +76,6 @@ int  SWITCH_AUDIOCDFS::cdaudiofs_open     (struct _reent *r, void *fileStruct, c
 }
 
 int  SWITCH_AUDIOCDFS::cdaudiofs_close    (struct _reent *r, void *fd){
-	//auto *priv      = static_cast<SWITCH_AUDIOCDFS     *>(r->deviceData);
-    //auto *priv_file = static_cast<SWITCH_AUDIOCDFSFile *>(fd);
-
 	
     return 0;
 }
@@ -155,16 +152,13 @@ int       SWITCH_AUDIOCDFS::cdaudiofs_stat     (struct _reent *r, const char *fi
 }
 
 int       SWITCH_AUDIOCDFS::cdaudiofs_chdir    (struct _reent *r, const char *name){
-	//auto *priv = static_cast<SWITCH_AUDIOCDFS *>(r->deviceData);
-
+	
     return 0;
 }
 
 DIR_ITER * SWITCH_AUDIOCDFS::cdaudiofs_diropen  (struct _reent *r, DIR_ITER *dirState, const char *path){
-	//auto *priv = static_cast<SWITCH_AUDIOCDFS *>(r->deviceData);
-	auto *priv_dir = static_cast<SWITCH_AUDIOCDFSDir *>(dirState->dirStruct);
 	
-	printf("OPEN DIR:%s\r\n",path);
+	auto *priv_dir = static_cast<SWITCH_AUDIOCDFSDir *>(dirState->dirStruct);
 	
 	priv_dir->dirnext_idx = 0;
 	

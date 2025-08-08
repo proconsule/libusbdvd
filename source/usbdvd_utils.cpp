@@ -6,8 +6,6 @@
 
 static std::mutex log_mutex;
 
-
-
 void usbdvd_log(const char *fmt, ...){
 	
 #ifdef DEBUG
@@ -21,7 +19,7 @@ void usbdvd_log(const char *fmt, ...){
 	fflush(stdout);
 #else
 	
-	//NX_IGNORE_ARG(fmt);
+
 #endif
 }
 

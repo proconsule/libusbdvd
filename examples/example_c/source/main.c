@@ -24,6 +24,7 @@ int main(int argc, const char* const* argv) {
 	usbdvd_obj* test = usbdvd_create();
 	usbdvd_drive_struct *drivectx = usbdvd_get_drivectx(test);
 	
+	printf("USBDVD Library Version: %s\r\n",usbdvd_version());
 	
 	
 	printf("vendor_id: %s\r\n",drivectx->vendor_id);

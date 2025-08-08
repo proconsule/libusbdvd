@@ -33,13 +33,13 @@ CUSBDVD::~CUSBDVD(){
 CUSBDVD::CUSBDVD(std::string _cuepath,std::string _binpath){
 	cuepath = _cuepath;
 	binpath = _binpath;
-	fileimage = true;
+	usbdvd_drive_ctx.fileimage = true;
 		
 }
 
 CUSBDVD::CUSBDVD(std::string _isofilepath){
 	isofilepath = _isofilepath;
-	fileimage = true;
+	usbdvd_drive_ctx.fileimage = true;
 	
 	ISO9660FS = new CUSBDVD_ISO9660FS(isofilepath);
 	SWITCH_ISO9660DEVOPTAB = new SWITCH_ISO9660FS(ISO9660FS,"iso0","iso0:");
@@ -50,7 +50,7 @@ CUSBDVD::CUSBDVD(std::string _isofilepath){
 
 CUSBDVD::CUSBDVD(){
 	usbdvd_drive_ctx.drive_found = false;
-	
+	usbdvd_drive_ctx.fileimage = false;
 	SWITCH_USB = new CSWITCH_USB();
 	if(SWITCH_USB->device_found){
 		USB_SCSI = new CUSBSCSI(SWITCH_USB);
@@ -137,15 +137,12 @@ CUSBDVD::CUSBDVD(){
 		
 			int myfstype = UsbDVDGuessFsType(&toc);
 			
-			
-			
 	#ifdef DEBUG
 			for(int i=0;i<toc.hdr.last_track;i++){
 				usbdvd_log("Track %d %d\r\n",i+1,toc.tracks[i].tracktype);
 			
 			}
 	#endif
-			
 			
 			if(myfstype == 1){
 			
@@ -217,6 +214,11 @@ int UsbDVDGuessFsType(CDDVD_TOC * mytoc){
 }
 
 
+std::string CUSBDVD::get_version(){
+	return LIBUSBDVD_VERSION_STRING;
+}
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -225,16 +227,9 @@ static CUSBDVD* cast_to_cpp(usbdvd_obj* obj) {
     return reinterpret_cast<CUSBDVD*>(obj);
 }
 
-/*
-static const CUSBDVD* cast_to_cpp_const(const usbdvd_obj* obj) {
-    return reinterpret_cast<const CUSBDVD*>(obj);
-}
-*/
-
 static usbdvd_obj* cast_to_c(CUSBDVD* obj) {
     return reinterpret_cast<usbdvd_obj*>(obj);
 }
-
 
 usbdvd_obj* usbdvd_create() {
 	CUSBDVD* obj = new CUSBDVD();
@@ -252,7 +247,11 @@ usbdvd_drive_struct * usbdvd_get_drivectx(usbdvd_obj* obj){
 	return &cast_to_cpp(obj)->usbdvd_drive_ctx; 
 }
 
-
+const char* usbdvd_version(void){
+	static char version[32];
+    snprintf(version, sizeof(version), "%s",LIBUSBDVD_VERSION_STRING);
+    return version;
+}
 #ifdef __cplusplus
 }
 #endif

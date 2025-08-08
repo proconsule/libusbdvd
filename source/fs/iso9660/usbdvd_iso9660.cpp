@@ -233,13 +233,16 @@ CUSBDVD_ISO9660FS::CUSBDVD_ISO9660FS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba
 	primary_vd_struct primary_vd = {0};
     memcpy(&primary_vd,iso9660_rootsector,sizeof(primary_vd));
     
-//	if(primary_vd.stdid[0] == 'B' && primary_vd.stdid[1] == 'E' && primary_vd.stdid[2] == 'A' && primary_vd.stdid[3] == '0' && primary_vd.stdid[4] == '1'){
+/*	
+	// UDF STDID
+
+	if(primary_vd.stdid[0] == 'B' && primary_vd.stdid[1] == 'E' && primary_vd.stdid[2] == 'A' && primary_vd.stdid[3] == '0' && primary_vd.stdid[4] == '1'){
 		
 	
 	
 	
 	
-//	}else{
+	}else{*/
     
 		SystemIdentifier = (const char *)primary_vd.sys_id;
 		VolumeIdentifier = (const char *)primary_vd.vol_id;
@@ -283,7 +286,6 @@ CUSBDVD_ISO9660FS::CUSBDVD_ISO9660FS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba
 			usbdvd_log("%s\r\n",iso9660_dirlist[i].name.c_str());
 		}
 	
-//	}
 }
 
 
@@ -294,12 +296,7 @@ void CUSBDVD_ISO9660FS::UDFParse(){
 	primary_vd_struct udfversion = {0};
 	memcpy(&udfversion,iso9660_udfversion,sizeof(udfversion));
 	
-	
-	
-	
 }
-
-
 
 CUSBDVD_ISO9660FS::CUSBDVD_ISO9660FS(std::string _filename){
     
@@ -495,27 +492,6 @@ void CUSBDVD_ISO9660FS::list_dir_iso9660(uint32_t sector, const std::string& pat
                     
                 }
                 
-				/*
-				iso9660_dirlist_struct tmp;
-                    tmp.name = filename;
-                    tmp.size =  byte2u32_le(record->root_size_le);
-                    tmp.lba = byte2u32_le(record->root_lba_le);
-                    tmp.fullpath = full_path;
-                    tmp.isdir = is_directory;
-                    tmp.utc_time = rd_record_to_unixtime(&record->datetime);
-					
-                    if(tmp.isdir && filename == ""){
-                        
-                    }else{
-						
-                        iso9660_dirlist.push_back(tmp);
-                    }
-                    
-                    if (is_directory && filename != "" && byte2u32_le(record->root_lba_le) > 0) {
-                        list_dir_iso9660(byte2u32_le(record->root_lba_le), full_path);
-                    }
-				*/
-				
             }
             
             offset += record->rd_len;
@@ -532,7 +508,7 @@ void CUSBDVD_ISO9660FS::list_dir_joliet(uint32_t sector, const std::string& path
 	while (offset < 2048) {
         rd_record_struct* record = reinterpret_cast<rd_record_struct*>(buffer+offset);
          if (record->rd_len == 0) {
-                // Fine dei record in questo settore
+               
                 break;
             }
         const uint8_t* name_ptr = &buffer[offset + sizeof(rd_record_struct)];

@@ -135,17 +135,11 @@ CSWITCH_USB::CSWITCH_USB(){
 			}
 		}
 		
-		//if(!e_in)usbdvd_log("NO INPUT ENDPOINT\r\n");
-		//if(!e_out)usbdvd_log("NO OUTPUT ENDPOINT\r\n");
-		
-		
-		
-		
 		if (e_in && e_out){
-			//usb_device_reset();
+
 			usb_clear_halt(usb_if_session, &endpoint_out);
 			usb_clear_halt(usb_if_session, &endpoint_in);
-			//usbdvd_log("USB INI OK, ENDPOINT OK\r\n");
+			usbdvd_log("USB INIT OK, ENDPOINT OK\r\n");
 			device_found = true;
 			
 			return;

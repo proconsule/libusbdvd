@@ -28,7 +28,7 @@ int main(int argc, const char* const* argv) {
 	
 	usbdvd_drive_struct *drivectx = &testusbdvd->usbdvd_drive_ctx;
 	
-
+	printf("USBDVD Library Version: %s\r\n",testusbdvd->get_version().c_str());
 	printf("vendor_id: %s\r\n",drivectx->vendor_id);
 	printf("product_id: %s\r\n",drivectx->product_id);
 	printf("product_revision: %s\r\n",drivectx->product_revision);

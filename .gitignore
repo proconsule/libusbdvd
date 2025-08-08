@@ -2,3 +2,4 @@ lib/
 release/
 debug/
 libusbdvd.*
+*.tar.bz2

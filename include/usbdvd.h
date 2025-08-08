@@ -6,6 +6,18 @@
 extern "C" {
 #endif
 
+#define LIBUSBDVD_VERSION_MAJOR    0
+#define LIBUSBDVD_VERSION_MINOR    0
+#define LIBUSBDVD_VERSION_MICRO    1
+
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+
+#define LIBUSBDVD_VERSION_STRING \
+    TOSTRING(LIBUSBDVD_VERSION_MAJOR) "." \
+    TOSTRING(LIBUSBDVD_VERSION_MINOR) "." \
+    TOSTRING(LIBUSBDVD_VERSION_MICRO)
+
 #include <stdbool.h>
 
 typedef struct{
@@ -16,6 +28,7 @@ typedef struct{
 
 typedef struct{
 	bool drive_found;
+	bool fileimage;
 	char vendor_id[0x8+1];
     char product_id[0x10+1];
     char product_revision[0x4+1];
@@ -30,6 +43,7 @@ typedef struct usbdvd_obj usbdvd_obj;
 usbdvd_obj* usbdvd_create();
 void usbdvd_destroy(usbdvd_obj* obj);
 usbdvd_drive_struct * usbdvd_get_drivectx(usbdvd_obj* obj);
+const char* usbdvd_version(void);
 
 #ifdef __cplusplus
 }
@@ -67,20 +81,8 @@ public:
 	CUSBSCSI *USB_SCSI = nullptr;
 	SWITCH_ISO9660FS * SWITCH_ISO9660DEVOPTAB = nullptr;
 	
-	std::string vendor_id;
-	std::string product_id;
-	std::string product_revision;
-	std::string serial_number;
+	std::string get_version();
 	
-	std::string disctype;
-	
-	//bool drive_found = false;
-	//bool acd_init_ok = false;
-	//bool datacd_init_ok = false;
-	bool fileimage = false;
-	//std::string mountpoint = "";
-	//std::string disc_fstype = "";
-	//std::string disc_type;
 	int drive_status = 0;
 	
 	usbdvd_drive_struct usbdvd_drive_ctx;
