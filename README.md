@@ -6,7 +6,7 @@ Current support:
  - USB-DVD Drives with USB MASS STORAGE SUBCLASS 0x02
  - File Image mount (.iso)
  - CD Audio
- - ISO9660 with Joliet and RockRidge support
+ - ISO9660 with Joliet and basic RockRidge support
  
  
  
