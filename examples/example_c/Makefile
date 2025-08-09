@@ -40,9 +40,9 @@ include $(DEVKITPRO)/libnx/switch_rules
 
 BUILD_TIMESTAMP	:=	$(strip $(shell date --utc '+%Y-%m-%d %T UTC'))
 
-VERSION_MAJOR	:=	0
-VERSION_MINOR	:=	0
-VERSION_MICRO	:=	1
+$(eval VERSION_MAJOR = $(shell grep 'define LIBUSBDVD_VERSION_MAJOR\b' $(TOPDIR)/../../include/usbdvd.h | tr -s [:blank:] | cut -d' ' -f3))
+$(eval VERSION_MINOR = $(shell grep 'define LIBUSBDVD_VERSION_MINOR\b' $(TOPDIR)/../../include/usbdvd.h | tr -s [:blank:] | cut -d' ' -f3))
+$(eval VERSION_MICRO = $(shell grep 'define LIBUSBDVD_VERSION_MICRO\b' $(TOPDIR)/../../include/usbdvd.h | tr -s [:blank:] | cut -d' ' -f3))
 
 APP_TITLE		:=	libusbdvd-example-c
 APP_AUTHOR		:=	proconsule
@@ -88,6 +88,8 @@ ifneq ($(BUILD),$(notdir $(CURDIR)))
 
 export OUTPUT	:=	$(CURDIR)/$(TARGET)
 export TOPDIR	:=	$(CURDIR)
+
+
 
 export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
 			$(foreach dir,$(DATA),$(CURDIR)/$(dir))
