@@ -21,42 +21,75 @@ int main(int argc, const char* const* argv) {
 	PadState pad;
     padInitializeDefault(&pad);
 	
+	printf( CONSOLE_ESC(2J) );
+	
+	
+	//	Version can be retrived also before lib obj ref is created
+	printf(CONSOLE_ESC(4;5H) "USBDVD Library Version %s",usbdvd_version());
+	
+	// Library init (it will find first compatible drive and mount proper fs
 	usbdvd_obj* test = usbdvd_init();
-	// usbdvd_obj* test = usbdvd_initimage("/pathtoiso.iso");  //FILE MOUNT
+	// For ISO file mount use
+	// usbdvd_obj* test = usbdvd_initimage("/pathtoiso.iso");
+	
+	// Retrive the drive struct ref
 	usbdvd_drive_struct *drivectx = usbdvd_get_drivectx(test);
 	
-	printf("USBDVD Library Version: %s\r\n",usbdvd_version());
 	
-	
-	printf("vendor_id: %s\r\n",drivectx->vendor_id);
-	printf("product_id: %s\r\n",drivectx->product_id);
-	printf("product_revision: %s\r\n",drivectx->product_revision);
-	printf("serial_number: %s\r\n",drivectx->serial_number);
-	printf("Disc Type: %s\r\n",drivectx->disc_type);
-	char path[128];
-		sprintf(path,"%s/",drivectx->fs.mountpoint);
-		printf("PATH: %s\r\n",path);
-	
-	if(drivectx->fs.mounted){
-		printf("Volume ID: %s\r\n",drivectx->fs.volid);
-		printf("Disc FS: %s\r\n",drivectx->fs.disc_fstype);
-		struct dirent *ent;
-		char path[128];
-		sprintf(path,"%s/",drivectx->fs.mountpoint);
-		printf("PATH: %s\r\n",path);
-		DIR *d;
-		struct dirent *dir;
-		d = opendir(path);
-		if (d) {
-			while ((dir = readdir(d)) != NULL) {
-			printf("%s\n", dir->d_name);
-			}
-			closedir(d);
-		}
+	// Check if a drive is found or we are using a file image and print info
+	if(drivectx->drive_found || drivectx->fileimage){
+		printf(CONSOLE_ESC(6;2H)CONSOLE_ESC(0m)"vendor_id:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),drivectx->vendor_id);
+		printf(CONSOLE_ESC(7;2H)CONSOLE_ESC(0m)"product_id:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),drivectx->product_id);
+		printf(CONSOLE_ESC(8;2H)CONSOLE_ESC(0m)"product_revision:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),drivectx->product_revision);
+		printf(CONSOLE_ESC(9;2H)CONSOLE_ESC(0m)"serial_number:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),drivectx->serial_number);
 		
-		}else{
-			printf("NO USB DVD FOUND\r\n");
+	
+	
+		// Check if a supported filesystem was mounted
+		if(drivectx->fs.mounted){
+			char path[128];
+			// drivectx->fs.mountpoint is the mountpoint of current mounted fs
+			sprintf(path,"%s/",drivectx->fs.mountpoint);
+			printf(CONSOLE_ESC(11;2H)"MOUNT PATH: %s\r\n",path);
+			
+			// Print various info
+			printf(CONSOLE_ESC(12;2H)CONSOLE_ESC(0m)"Volume ID:%s %s"CONSOLE_ESC(0m),CONSOLE_ESC(1m),drivectx->fs.volid);
+			printf(CONSOLE_ESC(13;2H)CONSOLE_ESC(0m)"Disc FS:%s %s"CONSOLE_ESC(0m),CONSOLE_ESC(1m),drivectx->fs.disc_fstype);
+			printf(CONSOLE_ESC(15;2H)"File List: \n");
+			
+			// Standatd FS Directory Listing
+			
+			DIR *d;
+			DIR *dir;
+			struct stat file_stat;
+			
+			dir = opendir(path);
+			
+			if (dir) {
+				
+				struct _reent *reent    = __syscall_getreent();
+				devoptab_t *devoptab = devoptab_list[dir->dirData->device];	
+				while (true) {
+					reent->deviceData = devoptab->deviceData;
+					struct stat st;
+					memset(&st,0,sizeof(st));
+					if (devoptab->dirnext_r(reent, dir->dirData, dir->fileData.d_name, &st))
+						break;
+							
+					if (( strlen(dir->fileData.d_name) == 1) && dir->fileData.d_name[0] == '.') {
+						continue;
+					}
+					if (( strlen(dir->fileData.d_name) == 2) && dir->fileData.d_name[0] == '.' && dir->fileData.d_name[1] == '.') {
+						continue;
+					}
+					printf(CONSOLE_ESC(1m)"%s %d\n"CONSOLE_ESC(0m),dir->fileData.d_name,st.st_size);
+				}
+						
+				closedir(dir);
+			
+			}
 		}
+	}
 		
 
 	while(appletMainLoop()){
@@ -76,6 +109,8 @@ int main(int argc, const char* const* argv) {
 		
 	}
 	
+	
+	// Destory and cleanup the library
 	usbdvd_destroy(test);
 	consoleExit(NULL);
 	romfsExit();
