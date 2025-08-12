@@ -25,7 +25,7 @@ int main(int argc, const char* const* argv) {
 	
 	
 	//	Version can be retrived also before lib obj ref is created
-	printf(CONSOLE_ESC(4;5H) "USBDVD Library Version %s",usbdvd_version());
+	printf(CONSOLE_ESC(3;5H) "USBDVD Library Version %s",usbdvd_version());
 	
 	// Library init (it will find first compatible drive and mount proper fs
 	usbdvd_obj* test = usbdvd_init();
@@ -38,19 +38,20 @@ int main(int argc, const char* const* argv) {
 	
 	// Check if a drive is found or we are using a file image and print info
 	if(drivectx->drive_found || drivectx->fileimage){
-		printf(CONSOLE_ESC(6;2H)CONSOLE_ESC(0m)"vendor_id:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),drivectx->vendor_id);
-		printf(CONSOLE_ESC(7;2H)CONSOLE_ESC(0m)"product_id:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),drivectx->product_id);
-		printf(CONSOLE_ESC(8;2H)CONSOLE_ESC(0m)"product_revision:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),drivectx->product_revision);
-		printf(CONSOLE_ESC(9;2H)CONSOLE_ESC(0m)"serial_number:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),drivectx->serial_number);
+		printf(CONSOLE_ESC(5;2H)CONSOLE_ESC(0m)"vendor_id:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),drivectx->vendor_id);
+		printf(CONSOLE_ESC(6;2H)CONSOLE_ESC(0m)"product_id:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),drivectx->product_id);
+		printf(CONSOLE_ESC(7;2H)CONSOLE_ESC(0m)"product_revision:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),drivectx->product_revision);
+		printf(CONSOLE_ESC(8;2H)CONSOLE_ESC(0m)"serial_number:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),drivectx->serial_number);
+		printf(CONSOLE_ESC(9;2H)CONSOLE_ESC(0m)"Disc Type:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),drivectx->disc_type);
 		
-	
+		
 	
 		// Check if a supported filesystem was mounted
 		if(drivectx->fs.mounted){
 			char path[128];
 			// drivectx->fs.mountpoint is the mountpoint of current mounted fs
 			sprintf(path,"%s/",drivectx->fs.mountpoint);
-			printf(CONSOLE_ESC(11;2H)"MOUNT PATH: %s\r\n",path);
+			printf(CONSOLE_ESC(11;2H)CONSOLE_ESC(0m)"MOUNT PATH:%s %s\r\n",CONSOLE_ESC(1m),path);
 			
 			// Print various info
 			printf(CONSOLE_ESC(12;2H)CONSOLE_ESC(0m)"Volume ID:%s %s"CONSOLE_ESC(0m),CONSOLE_ESC(1m),drivectx->fs.volid);

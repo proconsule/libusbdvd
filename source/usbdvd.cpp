@@ -8,7 +8,9 @@
 #include "audiocdfs.h"
 #include "usbdvd_iso9660.h"
 #include "iso9660_devoptab.h"
+#include "usbdvd_udf.h"
 #include "usbdvd_common.h"
+#include "udf_devoptab.h"
 
 
 int UsbDVDGuessFsType(CDDVD_TOC * mytoc);
@@ -19,10 +21,12 @@ CUSBDVD::~CUSBDVD(){
 	}
 	if(SWITCH_CDAUDIODEVOPTAB != nullptr)delete SWITCH_CDAUDIODEVOPTAB;
 	if(SWITCH_ISO9660DEVOPTAB != nullptr)delete SWITCH_ISO9660DEVOPTAB;
+	if(SWITCH_UDFDEVOPTAB != nullptr)delete SWITCH_UDFDEVOPTAB;
 	
 	
 	if(CDAUDIOFS != nullptr)delete CDAUDIOFS;
 	if(ISO9660FS != nullptr)delete ISO9660FS;
+	if(USBDVD_UDFFS != nullptr)delete USBDVD_UDFFS;
 	
 	if(USB_SCSI != nullptr)delete USB_SCSI;
 	if(SWITCH_USB!= nullptr)delete SWITCH_USB;
@@ -129,20 +133,40 @@ CUSBDVD::CUSBDVD(){
 			if(ret == 0){
 				switch (testconf[7]) {
 					case ATAPI_PROFILE_CD_ROM:
-					case ATAPI_PROFILE_CD_R:
-					case ATAPI_PROFILE_CD_RW:
 						disctype = "CD-ROM";
 						break;
+					case ATAPI_PROFILE_CD_R:
+						disctype = "CD-R";
+						break;
+					case ATAPI_PROFILE_CD_RW:
+						disctype = "CD-RW";
+						break;
 					case ATAPI_PROFILE_DVD_ROM:
-					case ATAPI_PROFILE_DVD_R_SEQUENTIAL:
-					case ATAPI_PROFILE_DVD_RAM:
-					case ATAPI_PROFILE_DVD_RW_RESTRICTED_OVERWRITE:
-					case ATAPI_PROFILE_DVD_RW_SEQUENTIAL:
-					case ATAPI_PROFILE_DVD_R_DL_SEQUENTIAL:
-					case ATAPI_PROFILE_DVD_R_DL_JUMP_RECORDING:
-					case ATAPI_PROFILE_DVD_RW_DL:
-					case ATAPI_PROFILE_DVD_DOWNLOAD_DISC:
 						disctype = "DVD-ROM";
+						break;
+					case ATAPI_PROFILE_DVD_R_SEQUENTIAL:
+						disctype = "DVD-R";
+						break;
+					case ATAPI_PROFILE_DVD_RAM:
+						disctype = "DVD-RAM";
+						break;
+					case ATAPI_PROFILE_DVD_RW_RESTRICTED_OVERWRITE:
+						disctype = "DVD-RW";
+						break;
+					case ATAPI_PROFILE_DVD_RW_SEQUENTIAL:
+						disctype = "DVD-RW";
+						break;
+					case ATAPI_PROFILE_DVD_R_DL_SEQUENTIAL:
+						disctype = "DVD-R DL";
+						break;
+					case ATAPI_PROFILE_DVD_R_DL_JUMP_RECORDING:
+						disctype = "DVD-R DL";
+						break;
+					case ATAPI_PROFILE_DVD_RW_DL:
+						disctype = "DVD-RW DL";
+						break;
+					case ATAPI_PROFILE_DVD_DOWNLOAD_DISC:
+						disctype = "DVD-DL";
 						break;
 					default:
 						disctype = "Unknown";
@@ -150,7 +174,7 @@ CUSBDVD::CUSBDVD(){
 			
 			}
 			
-			strcpy(usbdvd_drive_ctx.disc_type,disctype.c_str());
+			strncpy(usbdvd_drive_ctx.disc_type,disctype.c_str(),sizeof(usbdvd_drive_ctx.disc_type)-1);
 			
 			USB_SCSI->UsbDvdPreventMediumRemoval(0,1);
 			
@@ -197,27 +221,42 @@ CUSBDVD::CUSBDVD(){
 				uint32_t mylba = ((toc.tracks[0].MIN*60)+toc.tracks[0].SEC)*75+toc.tracks[0].FRAME;
 				uint32_t nextlba = ((toc.tracks[1].MIN*60)+toc.tracks[1].SEC)*75+toc.tracks[1].FRAME;
 				
-				ISO9660FS = new CUSBDVD_ISO9660FS(USB_SCSI,mylba,nextlba);
-				strncpy(usbdvd_drive_ctx.fs.volid,ISO9660FS->VolumeIdentifier.c_str(),sizeof(usbdvd_drive_ctx.fs.volid)-1);
-			
-				cdfs_init = true;
-				
-				SWITCH_ISO9660DEVOPTAB = new SWITCH_ISO9660FS(ISO9660FS,"iso0","iso0:");
-				pseudofs_init = true;
-				strcpy(usbdvd_drive_ctx.fs.mountpoint,"iso0:");
-				
-				if(pseudofs_init && cdfs_init && usb_init)usbdvd_drive_ctx.fs.mounted = true;
-				if(ISO9660FS->isjoliet){
-					strcpy(usbdvd_drive_ctx.fs.disc_fstype,"ISO9660 + Joliet");	
-			
-				} else if(ISO9660FS->isrockridge){
-					strcpy(usbdvd_drive_ctx.fs.disc_fstype,"ISO9660 + RockRidge");
-			
-				}else{
-					strcpy(usbdvd_drive_ctx.fs.disc_fstype,"ISO9660");
-			
+				uint8_t fssector[2048];
+				USB_SCSI->UsbDvdReadCD_Data(0,16,1,fssector);
+				if(fssector[0] == 0 && fssector[1] == 'B' && fssector[2] == 'E' && fssector[3] == 'A' && fssector[4] == '0' && fssector[5] == '1'){
+					USBDVD_UDFFS = new CUSBDVD_UDFFS(USB_SCSI,mylba,nextlba);
+					cdfs_init = true;
+					SWITCH_UDFDEVOPTAB = new SWITCH_UDFFS(USBDVD_UDFFS,"iso0","iso0:");
+					pseudofs_init = true;
+					strcpy(usbdvd_drive_ctx.fs.mountpoint,"iso0:");
+					strcpy(usbdvd_drive_ctx.fs.disc_fstype,"UDF");
+					
+					if(pseudofs_init && cdfs_init && usb_init)usbdvd_drive_ctx.fs.mounted = true;
 				}
 				
+				if(fssector[0] == 1 && fssector[1] == 'C' && fssector[2] == 'D' && fssector[3] == '0' && fssector[4] == '0' && fssector[5] == '1'){
+				
+					ISO9660FS = new CUSBDVD_ISO9660FS(USB_SCSI,mylba,nextlba);
+					strncpy(usbdvd_drive_ctx.fs.volid,ISO9660FS->VolumeIdentifier.c_str(),sizeof(usbdvd_drive_ctx.fs.volid)-1);
+				
+					cdfs_init = true;
+					
+					SWITCH_ISO9660DEVOPTAB = new SWITCH_ISO9660FS(ISO9660FS,"iso0","iso0:");
+					pseudofs_init = true;
+					strcpy(usbdvd_drive_ctx.fs.mountpoint,"iso0:");
+					
+					if(pseudofs_init && cdfs_init && usb_init)usbdvd_drive_ctx.fs.mounted = true;
+					if(ISO9660FS->isjoliet){
+						strcpy(usbdvd_drive_ctx.fs.disc_fstype,"ISO9660 + Joliet");	
+				
+					} else if(ISO9660FS->isrockridge){
+						strcpy(usbdvd_drive_ctx.fs.disc_fstype,"ISO9660 + RockRidge");
+				
+					}else{
+						strcpy(usbdvd_drive_ctx.fs.disc_fstype,"ISO9660");
+				
+					}
+				}
 			}
 		}
 	

@@ -23,4 +23,34 @@ void usbdvd_log(const char *fmt, ...){
 #endif
 }
 
+uint32_t byte2u32_le(uint8_t * ptr) {
+  
+  return (static_cast<uint32_t>(ptr[0])) |
+         (static_cast<uint32_t>(ptr[1]) << 8) |
+         (static_cast<uint32_t>(ptr[2]) << 16) |
+         (static_cast<uint32_t>(ptr[3]) << 24);
+}
+
+uint32_t byte2u32_be(uint8_t * ptr) {
+  
+  return (static_cast<uint32_t>(ptr[3])) |
+         (static_cast<uint32_t>(ptr[2]) << 8) |
+         (static_cast<uint32_t>(ptr[1]) << 16) |
+         (static_cast<uint32_t>(ptr[0]) << 24);
+}
+
+
+uint16_t byte2u16_le(uint8_t * ptr) {
+  
+  return (static_cast<uint32_t>(ptr[0])) |
+         (static_cast<uint32_t>(ptr[1]) << 8);
+}
+
+uint16_t byte2u16_be(uint8_t * ptr) {
+  
+  return (static_cast<uint32_t>(ptr[1])) |
+         (static_cast<uint32_t>(ptr[0]) << 8);
+        
+}
+
 

@@ -8,7 +8,7 @@ extern "C" {
 
 #define LIBUSBDVD_VERSION_MAJOR    0
 #define LIBUSBDVD_VERSION_MINOR    0
-#define LIBUSBDVD_VERSION_MICRO    2
+#define LIBUSBDVD_VERSION_MICRO    3
 
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
@@ -64,8 +64,8 @@ class CAUDIOCD_PSEUDOFS;
 class CUSBSCSI;
 class CUSBDVD_ISO9660FS;
 class SWITCH_ISO9660FS;
-
-
+class CUSBDVD_UDFFS;
+class SWITCH_UDFFS;
 
 
 class CUSBDVD{
@@ -82,7 +82,8 @@ public:
 	CUSBDVD_ISO9660FS *ISO9660FS = nullptr;
 	CUSBSCSI *USB_SCSI = nullptr;
 	SWITCH_ISO9660FS * SWITCH_ISO9660DEVOPTAB = nullptr;
-	
+	CUSBDVD_UDFFS * USBDVD_UDFFS = nullptr;
+	SWITCH_UDFFS *SWITCH_UDFDEVOPTAB = nullptr;
 	std::string get_version();
 	
 	int drive_status = 0;

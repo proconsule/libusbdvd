@@ -7,11 +7,11 @@ Current support:
  - File Image mount (.iso)
  - CD Audio
  - ISO9660 with Joliet and basic RockRidge support
- 
+ - Basic UDF 1.02 Support
  
  
 TODO List:
-- UDF Filesystem support
+- Full UDF Filesystem support
 - DECSS Algo
 - Blu-ray support 
 
