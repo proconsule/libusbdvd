@@ -15,6 +15,9 @@ TODO List:
 - DECSS Algo
 - Blu-ray support 
 
+For a list of tested device refer to [Compatibility List](https://github.com/proconsule/libusbdvd/COMPAT.md)
+
+
 There is a C++ and C interface (the c program must be linked against -lstdc++)
 
 C Example
