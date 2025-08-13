@@ -1,7 +1,7 @@
 #include "udf_devoptab.h"
 #include <filesystem>
 
-void udffsstat_entry(udf_dirlist_struct *_filedesc, struct stat *st);
+void udffsstat_entry(disc_dirlist_struct *_filedesc, struct stat *st);
 
 SWITCH_UDFFS::SWITCH_UDFFS(CUSBDVD_UDFFS *_ctx,std::string _name,std::string _mount_name){
 
@@ -88,7 +88,7 @@ ssize_t   SWITCH_UDFFS::udffs_read     (struct _reent *r, void *fd, char *ptr, s
 
     auto lk = std::scoped_lock(priv->session_mutex);
 	
-	udf_dirlist_struct * _filedesc = priv->UDFFS->GetFileDescFromIDX(priv_file->filelist_id);
+	disc_dirlist_struct * _filedesc = priv->UDFFS->GetFileDescFromIDX(priv_file->filelist_id);
 	priv->UDFFS->ReadData(_filedesc,priv_file->offset,len,(uint8_t *)ptr);
 	
 	priv_file->offset=priv_file->offset+len;
@@ -131,7 +131,7 @@ int       SWITCH_UDFFS::udffs_fstat    (struct _reent *r, void *fd, struct stat 
 	auto *priv_file = static_cast<SWITCH_UDFFSFile *>(fd);
     auto lk = std::scoped_lock(priv->session_mutex);
 	
-	udf_dirlist_struct * _filedesc = priv->UDFFS->GetFileDescFromIDX(priv_file->filelist_id);
+	disc_dirlist_struct * _filedesc = priv->UDFFS->GetFileDescFromIDX(priv_file->filelist_id);
 	udffsstat_entry(_filedesc,st);
 	
 	return 0;
@@ -141,7 +141,7 @@ int       SWITCH_UDFFS::udffs_stat     (struct _reent *r, const char *file, stru
 	auto *priv     = static_cast<SWITCH_UDFFS    *>(r->deviceData);
 	
 	
-	udf_dirlist_struct myfiledesc;
+	disc_dirlist_struct myfiledesc;
 	int ret = priv->UDFFS->GetFileDesc(&file[5],myfiledesc);
 	
 	udffsstat_entry(&myfiledesc,st);
@@ -160,10 +160,10 @@ DIR_ITER * SWITCH_UDFFS::udffs_diropen  (struct _reent *r, DIR_ITER *dirState, c
 	
 	
 	priv->currdirlist.clear();
-	for(int i=0;i<(int)priv->UDFFS->udf_dirlist.size();i++){
-		std::filesystem::path epath{priv->UDFFS->udf_dirlist[i].fullpath};
+	for(int i=0;i<(int)priv->UDFFS->disc_dirlist.size();i++){
+		std::filesystem::path epath{priv->UDFFS->disc_dirlist[i].fullpath};
 		if(epath.parent_path().string() == std::string(&path[5])){
-			priv->currdirlist.push_back(priv->UDFFS->udf_dirlist[i]);
+			priv->currdirlist.push_back(priv->UDFFS->disc_dirlist[i]);
 		}
                 
 	}
@@ -214,7 +214,7 @@ int       SWITCH_UDFFS::udffs_statvfs  (struct _reent *r, const char *path, stru
 	return 0;
 }
 
-void udffsstat_entry(udf_dirlist_struct *_filedesc, struct stat *st)
+void udffsstat_entry(disc_dirlist_struct *_filedesc, struct stat *st)
 {
 	*st = {};
 	
@@ -223,8 +223,8 @@ void udffsstat_entry(udf_dirlist_struct *_filedesc, struct stat *st)
 	st->st_uid = 1;
 	st->st_gid = 2;
 	st->st_size = _filedesc->size;
-	st->st_atime = _filedesc->utc_time;
-	st->st_mtime = _filedesc->utc_time;
-	st->st_ctime = _filedesc->utc_time;
+	st->st_atime = _filedesc->access_time;
+	st->st_mtime = _filedesc->modification_time;
+	st->st_ctime = _filedesc->attribute_time;
 	
 }

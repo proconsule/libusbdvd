@@ -1,7 +1,7 @@
 #include "iso9660_devoptab.h"
 #include <filesystem>
 
-void iso9660fsstat_entry(iso9660_dirlist_struct *_filedesc, struct stat *st);
+void iso9660fsstat_entry(disc_dirlist_struct *_filedesc, struct stat *st);
 
 SWITCH_ISO9660FS::SWITCH_ISO9660FS(CUSBDVD_ISO9660FS *_ctx,std::string _name,std::string _mount_name){
 
@@ -88,7 +88,7 @@ ssize_t   SWITCH_ISO9660FS::iso9660fs_read     (struct _reent *r, void *fd, char
 
     auto lk = std::scoped_lock(priv->session_mutex);
 	
-	iso9660_dirlist_struct * _filedesc = priv->ISO9660FS->GetFileDescFromIDX(priv_file->filelist_id);
+	disc_dirlist_struct * _filedesc = priv->ISO9660FS->GetFileDescFromIDX(priv_file->filelist_id);
 	priv->ISO9660FS->ReadData(_filedesc,priv_file->offset,len,(uint8_t *)ptr);
 	
 	priv_file->offset=priv_file->offset+len;
@@ -131,7 +131,7 @@ int       SWITCH_ISO9660FS::iso9660fs_fstat    (struct _reent *r, void *fd, stru
 	auto *priv_file = static_cast<SWITCH_ISO9660FSFile *>(fd);
     auto lk = std::scoped_lock(priv->session_mutex);
 	
-	iso9660_dirlist_struct * _filedesc = priv->ISO9660FS->GetFileDescFromIDX(priv_file->filelist_id);
+	disc_dirlist_struct * _filedesc = priv->ISO9660FS->GetFileDescFromIDX(priv_file->filelist_id);
 	iso9660fsstat_entry(_filedesc,st);
 	
 	return 0;
@@ -141,7 +141,7 @@ int       SWITCH_ISO9660FS::iso9660fs_stat     (struct _reent *r, const char *fi
 	auto *priv     = static_cast<SWITCH_ISO9660FS    *>(r->deviceData);
 	
 	
-	iso9660_dirlist_struct myfiledesc;
+	disc_dirlist_struct myfiledesc;
 	int ret = priv->ISO9660FS->GetFileDesc(&file[5],myfiledesc);
 	
 	iso9660fsstat_entry(&myfiledesc,st);
@@ -160,10 +160,10 @@ DIR_ITER * SWITCH_ISO9660FS::iso9660fs_diropen  (struct _reent *r, DIR_ITER *dir
 	
 	
 	priv->currdirlist.clear();
-	for(int i=0;i<(int)priv->ISO9660FS->iso9660_dirlist.size();i++){
-		std::filesystem::path epath{priv->ISO9660FS->iso9660_dirlist[i].fullpath};
+	for(int i=0;i<(int)priv->ISO9660FS->disc_dirlist.size();i++){
+		std::filesystem::path epath{priv->ISO9660FS->disc_dirlist[i].fullpath};
 		if(epath.parent_path().string() == std::string(&path[5])){
-			priv->currdirlist.push_back(priv->ISO9660FS->iso9660_dirlist[i]);
+			priv->currdirlist.push_back(priv->ISO9660FS->disc_dirlist[i]);
 		}
                 
 	}
@@ -214,7 +214,7 @@ int       SWITCH_ISO9660FS::iso9660fs_statvfs  (struct _reent *r, const char *pa
 	return 0;
 }
 
-void iso9660fsstat_entry(iso9660_dirlist_struct *_filedesc, struct stat *st)
+void iso9660fsstat_entry(disc_dirlist_struct *_filedesc, struct stat *st)
 {
 	*st = {};
 	
@@ -223,8 +223,8 @@ void iso9660fsstat_entry(iso9660_dirlist_struct *_filedesc, struct stat *st)
 	st->st_uid = 1;
 	st->st_gid = 2;
 	st->st_size = _filedesc->size;
-	st->st_atime = _filedesc->utc_time;
-	st->st_mtime = _filedesc->utc_time;
-	st->st_ctime = _filedesc->utc_time;
+	st->st_atime = _filedesc->time;
+	st->st_mtime = _filedesc->time;
+	st->st_ctime = _filedesc->time;
 	
 }

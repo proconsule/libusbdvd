@@ -229,7 +229,7 @@ CUSBDVD::CUSBDVD(){
 					SWITCH_UDFDEVOPTAB = new SWITCH_UDFFS(USBDVD_UDFFS,"iso0","iso0:");
 					pseudofs_init = true;
 					strcpy(usbdvd_drive_ctx.fs.mountpoint,"iso0:");
-					strcpy(usbdvd_drive_ctx.fs.disc_fstype,"UDF");
+					strcpy(usbdvd_drive_ctx.fs.disc_fstype,USBDVD_UDFFS->udf_version_string.c_str());
 					
 					if(pseudofs_init && cdfs_init && usb_init)usbdvd_drive_ctx.fs.mounted = true;
 				}

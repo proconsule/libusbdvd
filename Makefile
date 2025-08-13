@@ -15,9 +15,9 @@ include $(DEVKITPRO)/libnx/switch_rules
 # INCLUDES is a list of directories containing header files
 #---------------------------------------------------------------------------------
 TARGET		:=	$(notdir $(CURDIR))
-SOURCES		:=	source source/fs/udf source/fs/iso9660 source/fs/audiocdfs/ source/os/switch
+SOURCES		:=	source source/fs source/fs/udf source/fs/iso9660 source/fs/audiocdfs/ source/os/switch
 DATA		:=	data
-INCLUDES	:=  include source source/fs/udf source/fs/iso9660 source/fs/audiocdfs/ source/os/switch
+INCLUDES	:=  include source source/fs source/fs/udf source/fs/iso9660 source/fs/audiocdfs/ source/os/switch
 
 #---------------------------------------------------------------------------------
 # options for code generation

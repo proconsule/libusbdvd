@@ -181,39 +181,15 @@ time_t rd_record_to_unixtime(rd_record_time_struct * _date){
     return utc_time;
 }
 
-CUSBDVD_ISO9660FS::~CUSBDVD_ISO9660FS(){
-	if(isofile){
-		if(isofp)fclose(isofp);
-	}
-	pthread_mutex_destroy(&this->read_lock);
-}
 
-CUSBDVD_ISO9660FS::CUSBDVD_ISO9660FS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba,uint32_t _endlba){
-	if (pthread_mutex_init(&this->read_lock, NULL) != 0) {
-        usbdvd_log("\n mutex init has failed\n");
-        return;
-    }
-	absstartlba = _startlba;
-	absendlba = _endlba;
-	usb_scsi_ctx = _usb_scsi_ctx;
-	isofile = false;
+CUSBDVD_ISO9660FS::CUSBDVD_ISO9660FS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba,uint32_t _endlba) : CUSBDVD_DATADISC(_usb_scsi_ctx,_startlba,_endlba){
 	
 	uint8_t iso9660_rootsector[DATA_SECOTR_SIZE];
     
     ReadSector(16,iso9660_rootsector);
 	primary_vd_struct primary_vd = {0};
     memcpy(&primary_vd,iso9660_rootsector,sizeof(primary_vd));
-    
-/*	
-	// UDF STDID
-
-	if(primary_vd.stdid[0] == 'B' && primary_vd.stdid[1] == 'E' && primary_vd.stdid[2] == 'A' && primary_vd.stdid[3] == '0' && primary_vd.stdid[4] == '1'){
-		
-	
-	
-	
-	
-	}else{*/
+ 
     
 		SystemIdentifier = (const char *)primary_vd.sys_id;
 		VolumeIdentifier = (const char *)primary_vd.vol_id;
@@ -253,23 +229,13 @@ CUSBDVD_ISO9660FS::CUSBDVD_ISO9660FS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba
 			list_dir_iso9660(root_sector,"/");
 		}
 		
-		for(int i=0;i<(int)iso9660_dirlist.size();i++){
-			usbdvd_log("%s\r\n",iso9660_dirlist[i].name.c_str());
+		for(int i=0;i<(int)disc_dirlist.size();i++){
+			usbdvd_log("%s\r\n",disc_dirlist[i].name.c_str());
 		}
 	
 }
 
-
-void CUSBDVD_ISO9660FS::UDFParse(){
-	uint8_t iso9660_udfversion[DATA_SECOTR_SIZE];
-	   
-	ReadSector(17,iso9660_udfversion);
-	primary_vd_struct udfversion = {0};
-	memcpy(&udfversion,iso9660_udfversion,sizeof(udfversion));
-	
-}
-
-CUSBDVD_ISO9660FS::CUSBDVD_ISO9660FS(std::string _filename){
+CUSBDVD_ISO9660FS::CUSBDVD_ISO9660FS(std::string _filename) : CUSBDVD_DATADISC(_filename){
     
     if (pthread_mutex_init(&this->read_lock, NULL) != 0) {
         usbdvd_log("\n mutex init has failed\n");
@@ -336,61 +302,10 @@ CUSBDVD_ISO9660FS::CUSBDVD_ISO9660FS(std::string _filename){
 			list_dir_iso9660(root_sector,"/");
 		}
 		
-		for(int i=0;i<(int)iso9660_dirlist.size();i++){
-			usbdvd_log("%s\r\n",iso9660_dirlist[i].name.c_str());
+		for(int i=0;i<(int)disc_dirlist.size();i++){
+			usbdvd_log("%s\r\n",disc_dirlist[i].name.c_str());
 		}
 	
-}
-
-uint32_t CUSBDVD_ISO9660FS::GetFileSize(std::string _filename){
-    for(unsigned int i=0;i<iso9660_dirlist.size();i++){
-        if(_filename == iso9660_dirlist[i].fullpath)return iso9660_dirlist[i].size;
-    }
-    return 0;
-}
-
-int CUSBDVD_ISO9660FS::GetFileDesc(std::string _filename,iso9660_dirlist_struct & _filedesc){
-    for(unsigned int i=0;i<iso9660_dirlist.size();i++){
-        if(_filename == iso9660_dirlist[i].fullpath){
-            _filedesc = iso9660_dirlist[i];
-            return 0;
-        }
-    }
-    return -1;
-}
-
-iso9660_dirlist_struct * CUSBDVD_ISO9660FS::GetFileDescFromIDX(int idx){
-    if(idx>=(int)iso9660_dirlist.size())return NULL;
-    return &iso9660_dirlist[idx];
-}
-
-int CUSBDVD_ISO9660FS::FindFile(std::string _filename){
-    for(unsigned int i=0;i<iso9660_dirlist.size();i++){
-        if(_filename == iso9660_dirlist[i].fullpath){
-           return i;
-        }
-    }
-    return -1;
-}
-
-int CUSBDVD_ISO9660FS::ReadSector(uint32_t sector,uint8_t * buffer){
-	
-	//pthread_mutex_lock(&this->read_lock);
-    if(isofile){
-        iso9660_filesectorread(sector,buffer);
-		return 0;
-    }else{
-		return usb_scsi_ctx->UsbDvdReadCD_Data(0,sector,1,buffer);
-	}
-	//pthread_mutex_lock(&this->read_lock);
-	return -1;
-}
-
-
-int CUSBDVD_ISO9660FS::iso9660_filesectorread(uint32_t sector,uint8_t *buffer){
-    fseek(isofp,sector*DATA_SECOTR_SIZE,SEEK_SET);
-    fread(buffer, sizeof(uint8_t), DATA_SECOTR_SIZE,isofp);
-    return 0;
 }
 
 
@@ -436,7 +351,7 @@ void CUSBDVD_ISO9660FS::list_dir_iso9660(uint32_t sector, const std::string& pat
                         std::string full_path_rr = path;
                         if (path != "/") full_path_rr += "/";
                         full_path_rr+=filename;
-                        iso9660_dirlist_struct tmp;
+                        disc_dirlist_struct tmp;
                         
                         tmp.name = (const char *)testname;
                         tmp.size =  byte2u32_le(record->root_size_le);
@@ -446,7 +361,7 @@ void CUSBDVD_ISO9660FS::list_dir_iso9660(uint32_t sector, const std::string& pat
                         if(tmp.isdir && filename == ""){
                            
                         }else{
-                            iso9660_dirlist.push_back(tmp);
+                            disc_dirlist.push_back(tmp);
                         }
                         
                         if (is_directory && filename != "" && byte2u32_le(record->root_lba_le) > 0) {
@@ -455,17 +370,17 @@ void CUSBDVD_ISO9660FS::list_dir_iso9660(uint32_t sector, const std::string& pat
                         
                     }
                 }else{
-                    iso9660_dirlist_struct tmp;
+                    disc_dirlist_struct tmp;
                     tmp.name = filename;
                     tmp.size =  byte2u32_le(record->root_size_le);
                     tmp.lba = byte2u32_le(record->root_lba_le);
                     tmp.fullpath = full_path;
                     tmp.isdir = is_directory;
-                    tmp.utc_time = rd_record_to_unixtime(&record->datetime);
+                    tmp.time = rd_record_to_unixtime(&record->datetime);
                     if(tmp.isdir && filename == ""){
                         
                     }else{
-                        iso9660_dirlist.push_back(tmp);
+                        disc_dirlist.push_back(tmp);
                     }
                     
                     if (is_directory && filename != "" && byte2u32_le(record->root_lba_le) > 0) {
@@ -502,17 +417,17 @@ void CUSBDVD_ISO9660FS::list_dir_joliet(uint32_t sector, const std::string& path
                 full_path += filename;
                 
                 bool is_directory = (record->rd_type & 0x02) != 0;
-                iso9660_dirlist_struct tmp;
+                disc_dirlist_struct tmp;
                 tmp.name = filename;
                 tmp.size =  byte2u32_le(record->root_size_le);
                 tmp.lba = byte2u32_le(record->root_lba_le);
                 tmp.fullpath = full_path;
                 tmp.isdir = is_directory;
-                tmp.utc_time = rd_record_to_unixtime(&record->datetime);
+                tmp.time = rd_record_to_unixtime(&record->datetime);
                 if(tmp.isdir && filename == ""){
                    
                 }else{
-                    iso9660_dirlist.push_back(tmp);
+                    disc_dirlist.push_back(tmp);
                 }
                 
                 if (is_directory && filename != "" && byte2u32_le(record->root_lba_le) > 0) {
@@ -525,41 +440,4 @@ void CUSBDVD_ISO9660FS::list_dir_joliet(uint32_t sector, const std::string& path
             
     }
     
-}
-
-int CUSBDVD_ISO9660FS::ReadData(iso9660_dirlist_struct * _filedesc,uint32_t pos,uint32_t size,uint8_t * buf){
-    
-	
-	size_t firstsector =  _filedesc->lba + (pos/DATA_SECOTR_SIZE);
-	size_t offset_firstsector = pos%DATA_SECOTR_SIZE;
-	size_t lastsector = firstsector + (size/DATA_SECOTR_SIZE);
-	
-	size_t remread = size;
-	size_t buffosff = 0;
-	
-	for(size_t numblock = firstsector;numblock<=lastsector && remread > 0;numblock++){
-		size_t toread;
-		size_t offsetinblock = (numblock == firstsector) ? offset_firstsector : 0;
-		if(numblock == firstsector){
-			toread = std::min(remread,(size_t)DATA_SECOTR_SIZE-offset_firstsector);
-		}else{
-			toread = std::min(remread,(size_t)DATA_SECOTR_SIZE);
-		}
-		
-		if(numblock != read_sector){
-			ReadSector(numblock,read_buffer);
-		}
-		read_sector = numblock;
-		
-		memcpy(buf+buffosff,read_buffer+offsetinblock,toread);
-		
-		buffosff+=toread;
-		remread-=toread;
-		
-		
-	}
-	usb_scsi_ctx->UsbDvdReadAhead(0,lastsector,(size-1/DATA_SECOTR_SIZE));
-	return 0;
-	
-
 }

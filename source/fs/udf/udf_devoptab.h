@@ -85,7 +85,7 @@ private:
 	std::string cwd = "";
 	std::mutex session_mutex;
 	
-	std::vector<udf_dirlist_struct> currdirlist;
+	std::vector<disc_dirlist_struct> currdirlist;
 	
 protected:
 	devoptab_t devoptab = {};

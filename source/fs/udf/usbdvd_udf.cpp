@@ -56,8 +56,8 @@ typedef struct {
     uint8_t  volume_identifier[32];
     uint16_t volume_sequence_number;
     uint16_t maximum_volume_sequence_number; 
-    uint16_t interchange_level;    
-    uint16_t maximum_interchange_level;   
+    uint16_t min_udf_version;    
+    uint16_t max_udf_version;   
     uint32_t character_set_list;   
     uint32_t maximum_character_set_list;   
     uint8_t  volume_set_identifier[128];  
@@ -280,7 +280,33 @@ std::string UTF16_Truncate(unsigned char * _str,uint32_t _len) {
 }
 
 
-void CUSBDVD_UDFFS::Parse_FileEntry_Ptr(uint8_t * buffer,udf_dirlist_struct * _tmpfile){
+std::string getUDFVersionString(uint16_t descriptorVersion) {
+	switch (descriptorVersion) {
+        case 0x0102:
+            return "UDF 1.02" ;
+           
+        case 0x0150:
+            return "UDF 1.50" ;
+           
+        case 0x0200:
+            return "UDF 2.00" ;
+           
+        case 0x0201:
+            return "UDF 2.01" ;
+           
+        case 0x0250:
+            return "UDF 2.50" ;
+;
+        case 0x0260:
+            return "UDF 2.60" ;
+            
+        default:
+            return "???";
+            
+    }
+}
+
+void CUSBDVD_UDFFS::Parse_FileEntry_Ptr(uint8_t * buffer,disc_dirlist_struct * _tmpfile){
 	
 	udf_file_entry testentry = {0};
 	uint32_t fe_pos = 0;
@@ -316,7 +342,7 @@ void CUSBDVD_UDFFS::Parse_FID_Ptr(uint8_t * buffer,std::string _path){
 		fid_pos+=sizeof(fid);
 		fid_pos+=fid.length_of_implementation_use;
 		
-		udf_dirlist_struct tmpentry;
+		disc_dirlist_struct tmpentry;
 		
 		std::string _filename = UTF16_Truncate(buffer+fid_pos+2,fid.length_of_file_identifier);
 		tmpentry.name = _filename;
@@ -339,7 +365,7 @@ void CUSBDVD_UDFFS::Parse_FID_Ptr(uint8_t * buffer,std::string _path){
 			
 		}
 		if(tmpentry.name != ""){
-			udf_dirlist.push_back(tmpentry);
+			disc_dirlist.push_back(tmpentry);
 		}
 		
 		fid_pos+=fid.length_of_file_identifier;
@@ -350,22 +376,18 @@ void CUSBDVD_UDFFS::Parse_FID_Ptr(uint8_t * buffer,std::string _path){
 	
 }
 
-CUSBDVD_UDFFS::CUSBDVD_UDFFS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba,uint32_t _endlba){
-	if (pthread_mutex_init(&this->read_lock, NULL) != 0) {
-        usbdvd_log("\n mutex init has failed\n");
-        return;
-    }
-	absstartlba = _startlba;
-	absendlba = _endlba;
-	usb_scsi_ctx = _usb_scsi_ctx;
-	isofile = false;
+CUSBDVD_UDFFS::CUSBDVD_UDFFS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba,uint32_t _endlba) 
+	: CUSBDVD_DATADISC(_usb_scsi_ctx,_startlba,_endlba){
+	
 	
 	uint8_t udf_anchorvd[DATA_SECOTR_SIZE];
     
     ReadSector(256,udf_anchorvd);
 	UDF_AnchorVolumeDescriptorPointer avdp = {0};
     memcpy(&avdp,udf_anchorvd,sizeof(avdp));
-
+	
+	
+	
 	printf(CONSOLE_ESC(13;2H));
 
 	uint8_t udf_pvd[DATA_SECOTR_SIZE];
@@ -382,10 +404,22 @@ CUSBDVD_UDFFS::CUSBDVD_UDFFS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba,uint32_
 	UDF_PrimaryVolumeDescriptor pvd = {0};
 	partition_descriptor_t partdesc = {0};
 	memcpy(&pvd,udf_pvd,sizeof(pvd));
+	
+	
+	
 	memcpy(&partdesc,udf_partdesc,sizeof(partdesc));
 	
     logical_volume_descriptor_t testlvd = {0};
 	memcpy(&testlvd,udf_lvd,sizeof(logical_volume_descriptor_t));
+	
+	uint16_t udfver = (testlvd.domain_identifier.identifier_suffix[1] << 8 ) |  testlvd.domain_identifier.identifier_suffix[0];
+	
+	udf_version_string = getUDFVersionString(udfver);
+	
+	if(udfver> 0x0102){
+		return;
+	}
+	
 	
 	uint32_t partlbalocation = partdesc.partition_starting_location+testlvd.logical_volume_contents_use.location;
 	partitionlba = partlbalocation;
@@ -397,98 +431,4 @@ CUSBDVD_UDFFS::CUSBDVD_UDFFS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba,uint32_
 	ReadSector(partlbalocation+fsd.root_icb.location+1,root_fid);
 	Parse_FID_Ptr(root_fid,"/");
 	
-}
-
-CUSBDVD_UDFFS::~CUSBDVD_UDFFS(){
-	if(isofile){
-		if(isofp)fclose(isofp);
-	}
-	pthread_mutex_destroy(&this->read_lock);
-}
-
-int CUSBDVD_UDFFS::ReadSector(uint32_t sector,uint8_t * buffer){
-	
-	//pthread_mutex_lock(&this->read_lock);
-    if(isofile){
-        udf_filesectorread(sector,buffer);
-		return 0;
-    }else{
-		return usb_scsi_ctx->UsbDvdReadCD_Data(0,sector,1,buffer);
-	}
-	//pthread_mutex_lock(&this->read_lock);
-	return -1;
-}
-
-int CUSBDVD_UDFFS::udf_filesectorread(uint32_t sector,uint8_t *buffer){
-    fseek(isofp,sector*DATA_SECOTR_SIZE,SEEK_SET);
-    fread(buffer, sizeof(uint8_t), DATA_SECOTR_SIZE,isofp);
-    return 0;
-}
-
-uint32_t CUSBDVD_UDFFS::GetFileSize(std::string _filename){
-    for(unsigned int i=0;i<udf_dirlist.size();i++){
-        if(_filename == udf_dirlist[i].fullpath)return udf_dirlist[i].size;
-    }
-    return 0;
-}
-
-int CUSBDVD_UDFFS::GetFileDesc(std::string _filename,udf_dirlist_struct & _filedesc){
-    for(unsigned int i=0;i<udf_dirlist.size();i++){
-        if(_filename == udf_dirlist[i].fullpath){
-            _filedesc = udf_dirlist[i];
-            return 0;
-        }
-    }
-    return -1;
-}
-
-udf_dirlist_struct * CUSBDVD_UDFFS::GetFileDescFromIDX(int idx){
-    if(idx>=(int)udf_dirlist.size())return NULL;
-    return &udf_dirlist[idx];
-}
-
-int CUSBDVD_UDFFS::FindFile(std::string _filename){
-    for(unsigned int i=0;i<udf_dirlist.size();i++){
-        if(_filename == udf_dirlist[i].fullpath){
-           return i;
-        }
-    }
-    return -1;
-}
-
-int CUSBDVD_UDFFS::ReadData(udf_dirlist_struct * _filedesc,uint32_t pos,uint32_t size,uint8_t * buf){
-    
-	
-	size_t firstsector =  _filedesc->lba + (pos/DATA_SECOTR_SIZE);
-	size_t offset_firstsector = pos%DATA_SECOTR_SIZE;
-	size_t lastsector = firstsector + (size/DATA_SECOTR_SIZE);
-	
-	size_t remread = size;
-	size_t buffosff = 0;
-	
-	for(size_t numblock = firstsector;numblock<=lastsector && remread > 0;numblock++){
-		size_t toread;
-		size_t offsetinblock = (numblock == firstsector) ? offset_firstsector : 0;
-		if(numblock == firstsector){
-			toread = std::min(remread,(size_t)DATA_SECOTR_SIZE-offset_firstsector);
-		}else{
-			toread = std::min(remread,(size_t)DATA_SECOTR_SIZE);
-		}
-		
-		if(numblock != read_sector){
-			ReadSector(numblock,read_buffer);
-		}
-		read_sector = numblock;
-		
-		memcpy(buf+buffosff,read_buffer+offsetinblock,toread);
-		
-		buffosff+=toread;
-		remread-=toread;
-		
-		
-	}
-	usb_scsi_ctx->UsbDvdReadAhead(0,lastsector,(size-1/DATA_SECOTR_SIZE));
-	return 0;
-	
-
 }
