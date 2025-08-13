@@ -168,12 +168,25 @@ CUSBDVD::CUSBDVD(){
 					case ATAPI_PROFILE_DVD_DOWNLOAD_DISC:
 						disctype = "DVD-DL";
 						break;
+					case ATAPI_PROFILE_BD_ROM:
+						disctype = "BD-ROM";
+						break;
+					case ATAPI_PROFILE_BD_R_SEQUENTIAL:
+					case ATAPI_PROFILE_BD_R_RANDOM:
+						disctype = "BD-R";
+						break;
+					case ATAPI_PROFILE_BD_R_DL_SEQUENTIAL:
+					case ATAPI_PROFILE_BD_R_DL_JUMP_RECORDING:
+					case ATAPI_PROFILE_BD_RE_DL:
+						disctype = "BD-R DL";
+						break;
+					
 					default:
 						disctype = "Unknown";
 				}
 			
 			}
-			
+		
 			strncpy(usbdvd_drive_ctx.disc_type,disctype.c_str(),sizeof(usbdvd_drive_ctx.disc_type)-1);
 			
 			USB_SCSI->UsbDvdPreventMediumRemoval(0,1);
@@ -292,6 +305,44 @@ std::string CUSBDVD::get_version(){
 }
 
 
+void CUSBDVD::Eject(){
+	
+	if(USB_SCSI != nullptr){
+		usbdvd_drive_ctx.fs.mounted = false;
+		if(SWITCH_CDAUDIODEVOPTAB != nullptr){
+			delete SWITCH_CDAUDIODEVOPTAB;
+			SWITCH_CDAUDIODEVOPTAB = nullptr;
+		}
+		if(SWITCH_ISO9660DEVOPTAB != nullptr){
+			delete SWITCH_ISO9660DEVOPTAB;
+			SWITCH_ISO9660DEVOPTAB = nullptr;
+			
+		}
+		if(SWITCH_UDFDEVOPTAB != nullptr){
+			delete SWITCH_UDFDEVOPTAB;
+			SWITCH_UDFDEVOPTAB = nullptr;
+		}
+		
+		
+		if(CDAUDIOFS != nullptr){
+			delete CDAUDIOFS;
+			CDAUDIOFS = nullptr;
+		}
+		if(ISO9660FS != nullptr){
+			delete ISO9660FS;
+			ISO9660FS = nullptr;
+		}
+		if(USBDVD_UDFFS != nullptr){
+			delete USBDVD_UDFFS;
+			USBDVD_UDFFS = nullptr;
+		}
+		USB_SCSI->UsbDvdPreventMediumRemoval(0,0);
+		USB_SCSI->UsbDvd_Eject(0);
+	}
+	
+}
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -318,6 +369,12 @@ void usbdvd_destroy(usbdvd_obj* obj) {
     if (obj) {
         delete cast_to_cpp(obj);
     }
+}
+
+
+void usbdvd_eject(usbdvd_obj* obj) {
+    if (!obj)return;
+	cast_to_cpp(obj)->Eject();
 }
 
 usbdvd_drive_struct * usbdvd_get_drivectx(usbdvd_obj* obj){

@@ -297,6 +297,23 @@ int CUSBSCSI::UsbDvdReadCD_Audio(uint8_t lun,uint32_t read_lba,uint16_t numsec,u
     return send_scsi_command(&cbw,true,data);
 }
 
+int CUSBSCSI::UsbDvd_Eject(uint8_t lun){
+    
+    CBW cbw = {0};
+    CreateCommandBlockWrapper(&cbw,0,false,0,12);
+
+	
+	cbw.CBWCB[0] = 0x1b;            
+    cbw.CBWCB[1] = 0x00;   
+	cbw.CBWCB[2] = 0x00;
+	cbw.CBWCB[3] = 0x00;
+	cbw.CBWCB[4] = 0x02;
+	cbw.CBWCB[5] = 0x00;
+    
+
+    return send_scsi_command(&cbw,false,NULL);
+}
+
 int CUSBSCSI::UsbDvdReadCD_Data(uint8_t lun,uint32_t read_lba,uint16_t numsec,uint8_t *data){
     
     CBW cbw = {0};

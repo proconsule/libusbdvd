@@ -46,6 +46,7 @@ typedef struct usbdvd_obj usbdvd_obj;
 usbdvd_obj* usbdvd_init();
 usbdvd_obj* usbdvd_initimage(const char * _path);
 void usbdvd_destroy(usbdvd_obj* obj);
+void usbdvd_eject(usbdvd_obj* obj);
 usbdvd_drive_struct * usbdvd_get_drivectx(usbdvd_obj* obj);
 const char* usbdvd_version(void);
 
@@ -91,6 +92,8 @@ public:
 	int drive_status = 0;
 	
 	usbdvd_drive_struct usbdvd_drive_ctx;
+	
+	void Eject();
 	
 private:
 

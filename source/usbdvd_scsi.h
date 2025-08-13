@@ -183,6 +183,8 @@ public:
 	int UsbDvdSense(uint8_t lun,uint16_t allocation_length, ScsiRequestSenseDataFixedFormat *sense_data);
 	int UsbDvdPreventMediumRemoval(uint8_t lun,uint32_t prevent);
 	int UsbDvdGetConfig(uint8_t lun,uint8_t *buf);
+	int UsbDvd_Eject(uint8_t lun);
+
 	int send_scsi_command(CBW *cbw,bool receive,void *buf);
 	
 private:

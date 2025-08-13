@@ -102,7 +102,7 @@ int main(int argc, const char* const* argv) {
         if (kDown & HidNpadButton_Plus) break; // break in order to return to hbmenu
 
 		if (kDown & HidNpadButton_B) {
-			
+			usbdvd_eject(test);
 		}
 	
         consoleUpdate(NULL);
