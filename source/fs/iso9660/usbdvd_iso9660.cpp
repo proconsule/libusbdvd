@@ -237,32 +237,12 @@ CUSBDVD_ISO9660FS::CUSBDVD_ISO9660FS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba
 
 CUSBDVD_ISO9660FS::CUSBDVD_ISO9660FS(std::string _filename) : CUSBDVD_DATADISC(_filename){
     
-    if (pthread_mutex_init(&this->read_lock, NULL) != 0) {
-        usbdvd_log("\n mutex init has failed\n");
-        return;
-    }
-    
-    
-    filename = _filename;
-    isofp = fopen(filename.c_str(),"rb");
-    isofile = true;
-    
     uint8_t iso9660_rootsector[DATA_SECOTR_SIZE];
     
     ReadSector(16,iso9660_rootsector);
 	primary_vd_struct primary_vd = {0};
     memcpy(&primary_vd,iso9660_rootsector,sizeof(primary_vd));
     
-/*	
-	// UDF STDID
-
-	if(primary_vd.stdid[0] == 'B' && primary_vd.stdid[1] == 'E' && primary_vd.stdid[2] == 'A' && primary_vd.stdid[3] == '0' && primary_vd.stdid[4] == '1'){
-		
-	
-	
-	
-	
-	}else{*/
     
 		SystemIdentifier = (const char *)primary_vd.sys_id;
 		VolumeIdentifier = (const char *)primary_vd.vol_id;

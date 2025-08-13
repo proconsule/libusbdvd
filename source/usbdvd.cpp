@@ -240,7 +240,7 @@ CUSBDVD::CUSBDVD(){
 					strncpy(usbdvd_drive_ctx.fs.volid,ISO9660FS->VolumeIdentifier.c_str(),sizeof(usbdvd_drive_ctx.fs.volid)-1);
 				
 					cdfs_init = true;
-					
+					usbdvd_drive_ctx.fs.jolietver = ISO9660FS->jolietver;
 					SWITCH_ISO9660DEVOPTAB = new SWITCH_ISO9660FS(ISO9660FS,"iso0","iso0:");
 					pseudofs_init = true;
 					strcpy(usbdvd_drive_ctx.fs.mountpoint,"iso0:");

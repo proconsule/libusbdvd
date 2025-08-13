@@ -25,6 +25,8 @@ typedef struct{
 	char disc_fstype[0x80];
 	char mountpoint[0x10];
 	char volid[0xff];
+	/* FS Specific Data*/
+	int jolietver; // Joliet Version
 }usbdvd_fs_struct;
 
 typedef struct{
