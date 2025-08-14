@@ -77,6 +77,22 @@ int CUSBSCSI::UsbDvdGetConfig(uint8_t lun,uint8_t *buf)
     
 }
 
+int CUSBSCSI::UsbDvdGetCapacity(uint8_t lun,uint8_t *buf)
+{
+    
+    CBW cbw = {0};
+    memset(&cbw,0,sizeof(CBW));
+    CreateCommandBlockWrapper(&cbw,0x08,true,0,12);
+    
+    cbw.CBWCB[0] = 0x25;            
+    
+    
+    return send_scsi_command(&cbw,true,buf);
+    
+    
+}
+
+
 
 int CUSBSCSI::UsbDvdSetSpeed(uint8_t lun)
 {

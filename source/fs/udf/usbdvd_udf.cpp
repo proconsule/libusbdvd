@@ -356,7 +356,6 @@ void CUSBDVD_UDFFS::Parse_FID_Ptr(uint8_t * buffer,std::string _path){
 		
 		uint8_t fe_buffer[DATA_SECOTR_SIZE];
 		ReadSector(partitionlba+fid.icb.location,fe_buffer);
-		
 		Parse_FileEntry_Ptr(fe_buffer,&tmpentry);
 		if(tmpentry.isdir && tmpentry.name != ""){
 			uint8_t recursive_buffer[DATA_SECOTR_SIZE];
@@ -415,6 +414,9 @@ CUSBDVD_UDFFS::CUSBDVD_UDFFS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba,uint32_
 	uint16_t udfver = (testlvd.domain_identifier.identifier_suffix[1] << 8 ) |  testlvd.domain_identifier.identifier_suffix[0];
 	
 	udf_version_string = getUDFVersionString(udfver);
+	
+	
+	
 	
 	if(udfver> 0x0102){
 		return;

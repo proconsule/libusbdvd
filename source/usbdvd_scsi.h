@@ -165,6 +165,11 @@ typedef struct {
     uint8_t bCSWStatus;
 } __attribute__((packed)) CSW;
 
+typedef struct{
+	uint8_t size[4];
+	uint8_t blocksize[4];
+} __attribute__((packed)) disccapacity_struct;
+
 class CUSBSCSI{
 public:
 	CUSBSCSI(CSWITCH_USB * _usb_ctx);
@@ -183,6 +188,7 @@ public:
 	int UsbDvdSense(uint8_t lun,uint16_t allocation_length, ScsiRequestSenseDataFixedFormat *sense_data);
 	int UsbDvdPreventMediumRemoval(uint8_t lun,uint32_t prevent);
 	int UsbDvdGetConfig(uint8_t lun,uint8_t *buf);
+	int UsbDvdGetCapacity(uint8_t lun,uint8_t *buf);
 	int UsbDvd_Eject(uint8_t lun);
 
 	int send_scsi_command(CBW *cbw,bool receive,void *buf);
