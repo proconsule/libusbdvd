@@ -306,6 +306,22 @@ std::string getUDFVersionString(uint16_t descriptorVersion) {
     }
 }
 
+time_t udf102_to_unix_timestamp(const UDF_Timestamp& udf_ts) {
+    struct tm tm_time = {};
+    tm_time.tm_year = udf_ts.year - 1900;  // tm_year è anni dal 1900
+    tm_time.tm_mon = udf_ts.month - 1;     // tm_mon è 0-11
+    tm_time.tm_mday = udf_ts.day;
+    tm_time.tm_hour = udf_ts.hour;
+    tm_time.tm_min = udf_ts.minute;
+    tm_time.tm_sec = udf_ts.second;
+    tm_time.tm_isdst = 0;   // Forza no DST per calcolo UTC
+	
+	time_t unix_time = mktime(&tm_time);
+	
+    
+    return unix_time;
+}
+
 void CUSBDVD_UDFFS::Parse_FileEntry_Ptr(uint8_t * buffer,disc_dirlist_struct * _tmpfile){
 	
 	udf_file_entry testentry = {0};
@@ -316,7 +332,11 @@ void CUSBDVD_UDFFS::Parse_FileEntry_Ptr(uint8_t * buffer,disc_dirlist_struct * _
 	if(testentry.icb_tag.file_type == 0x04)_tmpfile->isdir = true;
 	if(testentry.icb_tag.file_type == 0x05)_tmpfile->isdir = false;
 	
-	fe_pos+= testentry.u_extended_attr;
+	_tmpfile->access_time = udf102_to_unix_timestamp(testentry.access_time);
+	_tmpfile->modification_time = udf102_to_unix_timestamp(testentry.modification_time);
+	_tmpfile->attribute_time = udf102_to_unix_timestamp(testentry.attribute_time);
+	
+	
 	
 	
 		
@@ -416,7 +436,7 @@ CUSBDVD_UDFFS::CUSBDVD_UDFFS(std::string _filename)
 	udf_version_string = getUDFVersionString(udfver);
 	
 	
-	
+	VolumeIdentifier =  UTF16_Truncate(&testlvd.logical_volume_identifier[2],126);
 	
 	if(udfver> 0x0102){
 		return;
@@ -474,6 +494,8 @@ CUSBDVD_UDFFS::CUSBDVD_UDFFS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba,uint32_
 	
 	udf_version_string = getUDFVersionString(udfver);
 	
+	
+	VolumeIdentifier =  UTF16_Truncate(&testlvd.logical_volume_identifier[2],126);
 	
 	
 	

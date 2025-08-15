@@ -8,7 +8,7 @@ extern "C" {
 
 #define LIBUSBDVD_VERSION_MAJOR    0
 #define LIBUSBDVD_VERSION_MINOR    0
-#define LIBUSBDVD_VERSION_MICRO    5
+#define LIBUSBDVD_VERSION_MICRO    6
 
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
@@ -49,6 +49,7 @@ usbdvd_obj* usbdvd_init();
 usbdvd_obj* usbdvd_initimage(const char * _path);
 void usbdvd_destroy(usbdvd_obj* obj);
 void usbdvd_eject(usbdvd_obj* obj);
+int usbdvd_mountdisc(usbdvd_obj* obj);
 usbdvd_drive_struct * usbdvd_get_drivectx(usbdvd_obj* obj);
 const char* usbdvd_version(void);
 
@@ -96,6 +97,7 @@ public:
 	usbdvd_drive_struct usbdvd_drive_ctx;
 	
 	void Eject();
+	int MountDisc();
 	
 private:
 
