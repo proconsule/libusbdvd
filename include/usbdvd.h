@@ -8,7 +8,7 @@ extern "C" {
 
 #define LIBUSBDVD_VERSION_MAJOR    0
 #define LIBUSBDVD_VERSION_MINOR    0
-#define LIBUSBDVD_VERSION_MICRO    4
+#define LIBUSBDVD_VERSION_MICRO    5
 
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)

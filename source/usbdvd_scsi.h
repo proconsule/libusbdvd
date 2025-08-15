@@ -170,6 +170,45 @@ typedef struct{
 	uint8_t blocksize[4];
 } __attribute__((packed)) disccapacity_struct;
 
+
+typedef struct {
+    uint16_t data_length;           
+    uint8_t  reserved[2];
+    
+    uint8_t  book_type_part_version;
+    uint8_t  disc_size_max_rate;
+    uint8_t  disc_structure;
+    
+    uint8_t  recording_density;
+    
+    uint32_t data_area_start;       // big-endian
+    uint32_t data_area_end;         // big-endian  
+    uint32_t layer0_end;            // big-endian (dual layer only)
+    
+    uint8_t  bca_flag;              // 0x00 = no BCA, 0x01 = BCA exists
+    
+    uint8_t  media_specific[2031];  
+} __attribute__((packed)) dvd_physical_format_t;
+
+typedef struct {
+    uint16_t data_length;           // sempre 0x0802
+    uint8_t  reserved[2];
+    uint8_t  disc_manufacturing_info[2048];
+} __attribute__((packed)) dvd_manufacturing_info_t;
+
+typedef struct {
+    uint16_t data_length;      //    always 0x0006
+    uint8_t  reserved[2];
+    
+	struct{
+		uint8_t CPRM :4;
+		uint8_t CSS :4;
+	};
+	uint8_t  region_info;
+    
+    uint16_t reserved2;
+} __attribute__((packed)) dvd_copyright_info_t;
+
 class CUSBSCSI{
 public:
 	CUSBSCSI(CSWITCH_USB * _usb_ctx);
@@ -189,6 +228,8 @@ public:
 	int UsbDvdPreventMediumRemoval(uint8_t lun,uint32_t prevent);
 	int UsbDvdGetConfig(uint8_t lun,uint8_t *buf);
 	int UsbDvdGetCapacity(uint8_t lun,uint8_t *buf);
+	int UsbDvdReadDVDStructure(uint8_t lun,uint8_t _format,uint16_t allocation_length, void *buf);
+
 	int UsbDvd_Eject(uint8_t lun);
 
 	int send_scsi_command(CBW *cbw,bool receive,void *buf);

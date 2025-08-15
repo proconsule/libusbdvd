@@ -48,7 +48,7 @@ int CAUDIOCD_PSEUDOFS::audiocdfs_gettrackfilesize(int tracknum){
     return audiocdfs_gettracksize(tracknum)+44;
 }
 int CAUDIOCD_PSEUDOFS::audiocdfs_gettracknums(){
-    return this->toc.hdr.last_track-1;
+    return this->toc.hdr.last_track;
 }
 
 int CAUDIOCD_PSEUDOFS::audiocdfs_File2Track(const char * filename){

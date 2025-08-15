@@ -126,6 +126,15 @@ int CUSBSCSI::UsbDvdDiscInfo(uint8_t lun,void *buf){
     
 }
 
+int CUSBSCSI::UsbDvdReadDVDStructure(uint8_t lun,uint8_t _format,uint16_t allocation_length, void *buf){
+	CBW cbw = {0};
+    memset(&cbw,0,sizeof(CBW));
+    CreateCommandBlockWrapper(&cbw,allocation_length,true,0,12);
+	cbw.CBWCB[0] = 0xAD;            
+    cbw.CBWCB[7] = _format;
+	
+	return send_scsi_command(&cbw,true,buf);
+}
 
 int CUSBSCSI::UsbDvdUnitReady(uint8_t lun){
     CBW cbw = {0};
