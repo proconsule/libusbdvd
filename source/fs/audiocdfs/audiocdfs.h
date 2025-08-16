@@ -33,7 +33,7 @@ class CAUDIOCD_PSEUDOFS{
 public:
 	CAUDIOCD_PSEUDOFS(CDDVD_TOC mytoc,CUSBSCSI * _usb_scsi_ctx);
 	CAUDIOCD_PSEUDOFS(uint8_t * tocbuffer,uint32_t bufsize,CUSBSCSI * _usb_scsi_ctx);
-	CAUDIOCD_PSEUDOFS(std::string _binfilename);
+	CAUDIOCD_PSEUDOFS(CDDVD_TOC mytoc,std::string _binfile);
 	~CAUDIOCD_PSEUDOFS();
 	int audiocdfs_gettrackfilesize(int tracknum);
 	int audiocdfs_gettracknums();
@@ -54,12 +54,14 @@ public:
 private:
 
 	CUSBSCSI *usb_scsi_ctx;
-         
+    int ReadCD_Audio_Frame(uint32_t _lba,uint8_t *buffer);     
 	uint8_t lastbuffer[CD_SECTOR_SIZE_AUDIO];
 	uint32_t sectornum;
 	bool iscdaudio = false;
 	bool isfile = false;
-	std::string binfilename;
+	
+	std::string _cuefilename;
+	std::string _binfilename;
 	FILE * binfile_fp;
 	pthread_mutex_t read_lock;		
 	CDDVD_TOC toc;

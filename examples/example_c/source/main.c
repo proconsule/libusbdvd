@@ -9,33 +9,14 @@
 #include <usbdvd.h>
 
 
-
-int main(int argc, const char* const* argv) {
-	
-	appletLockExit();
-	romfsInit();
-	
-	consoleInit(NULL);
-	padConfigureInput(1, HidNpadStyleSet_NpadStandard);
-	
-	PadState pad;
-    padInitializeDefault(&pad);
+void print_drive_info(usbdvd_obj* test){
 	
 	printf( CONSOLE_ESC(2J) );
 	
-	
-	//	Version can be retrived also before lib obj ref is created
+	//	Version can be retrived without lib obj ref
 	printf(CONSOLE_ESC(3;5H) "USBDVD Library Version %s",usbdvd_version());
 	
-	// Library init (it will find first compatible drive and mount proper fs
-	usbdvd_obj* test = usbdvd_init();
-	// For ISO file mount use
-	// usbdvd_obj* test = usbdvd_initimage("/pathtoiso.iso");
-	
-	// Retrive the drive struct ref
 	usbdvd_drive_struct *drivectx = usbdvd_get_drivectx(test);
-	
-	
 	// Check if a drive is found or we are using a file image and print info
 	if(drivectx->drive_found || drivectx->fileimage){
 		printf(CONSOLE_ESC(5;2H)CONSOLE_ESC(0m)"vendor_id:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),drivectx->vendor_id);
@@ -89,10 +70,38 @@ int main(int argc, const char* const* argv) {
 				closedir(dir);
 			
 			}
+			
 		}
+		printf(CONSOLE_ESC(40;25H)"B: Eject Drive A: Mount Drive\n");
 	}
-		
+	
+	
+}
 
+
+
+int main(int argc, const char* const* argv) {
+	
+	appletLockExit();
+	romfsInit();
+	
+	consoleInit(NULL);
+	padConfigureInput(1, HidNpadStyleSet_NpadStandard);
+	
+	PadState pad;
+    padInitializeDefault(&pad);
+	
+	// Library init (it will find first compatible drive and mount proper fs
+	usbdvd_obj* test = usbdvd_init();
+	// For ISO file mount use
+	// usbdvd_obj* test = usbdvd_initimage("/pathtoiso.iso");
+	
+	// Retrive the drive struct ref
+	usbdvd_drive_struct *drivectx = usbdvd_get_drivectx(test);
+	
+	
+	print_drive_info(test);
+	
 	while(appletMainLoop()){
 		 padUpdate(&pad);
 
@@ -104,6 +113,14 @@ int main(int argc, const char* const* argv) {
 		if (kDown & HidNpadButton_B) {
 			if(drivectx->drive_found){
 				usbdvd_eject(test);
+				print_drive_info(test);
+			}
+		}
+		
+		if (kDown & HidNpadButton_A) {
+			if(drivectx->drive_found){
+				usbdvd_mountdisc(test);
+				print_drive_info(test);
 			}
 		}
 	

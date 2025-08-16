@@ -1,19 +1,21 @@
 #include "audiocdfs.h"
 #include "usbdvd_utils.h"
 
-CAUDIOCD_PSEUDOFS::CAUDIOCD_PSEUDOFS(std::string _binfilename){
-    if (pthread_mutex_init(&this->read_lock, NULL) != 0) {
+CAUDIOCD_PSEUDOFS::CAUDIOCD_PSEUDOFS(CDDVD_TOC mytoc,std::string _binfile){
+	if (pthread_mutex_init(&this->read_lock, NULL) != 0) {
         usbdvd_log("\n mutex init has failed\n");
         return;
     }
-    this->binfilename = _binfilename;
-    this->binfile_fp = fopen(this->binfilename.c_str(),"rb");
-    this->isfile = true;
-    
-    audiocdfs_gettocfromfile();
-    
+	
+	binfile_fp = fopen(_binfile.c_str(),"rb");
+	
+	this->sectornum = 0;
+    this->toc = mytoc;
+	this->iscdaudio = true;
+	this->isfile = true;
+	
+	
 }
-
 
 CAUDIOCD_PSEUDOFS::CAUDIOCD_PSEUDOFS(CDDVD_TOC mytoc,CUSBSCSI * _usb_scsi_ctx){
 	usb_scsi_ctx = _usb_scsi_ctx;
@@ -25,11 +27,12 @@ CAUDIOCD_PSEUDOFS::CAUDIOCD_PSEUDOFS(CDDVD_TOC mytoc,CUSBSCSI * _usb_scsi_ctx){
 	this->sectornum = 0;
     this->toc = mytoc;
 	this->iscdaudio = true;
-	
+	this->isfile = false;
 }
 
 CAUDIOCD_PSEUDOFS::~CAUDIOCD_PSEUDOFS(){
 	pthread_mutex_destroy(&this->read_lock);
+	if(binfile_fp)fclose(binfile_fp);
 }
 
 int CAUDIOCD_PSEUDOFS::audiocdfs_gettocfromfile(){
@@ -99,10 +102,10 @@ int CAUDIOCD_PSEUDOFS::audiocdfs_readdata(uint32_t tracknum,uint32_t pos,uint32_
 		}
 		
 		if(numblock != this->sectornum){
-			usb_scsi_ctx->UsbDvdReadCD_Audio(0,numblock,1,this->lastbuffer);
+			//usb_scsi_ctx->UsbDvdReadCD_Audio(0,numblock,1,this->lastbuffer);
+			ReadCD_Audio_Frame(numblock,this->lastbuffer);
 			this->sectornum = numblock;
 		}
-		
 		
 		memcpy(buf+buffosff,this->lastbuffer+offsetinblock,toread);
 		
@@ -144,6 +147,18 @@ int CAUDIOCD_PSEUDOFS::audiocdfs_gettracksize(int tracknum){
     int nextlba = ((this->toc.tracks[tracknum+1].MIN*60)+this->toc.tracks[tracknum+1].SEC)*75+this->toc.tracks[tracknum+1].FRAME;
     return (nextlba-mylba)*2352;
     
+}
+
+int CAUDIOCD_PSEUDOFS::ReadCD_Audio_Frame(uint32_t _lba,uint8_t *buffer){
+	if(isfile){
+		if(!binfile_fp)return -1;
+		uint32_t filepos = _lba*CD_SECTOR_SIZE_AUDIO;
+		fseek(binfile_fp,filepos,SEEK_SET);
+		fread( buffer, sizeof( uint8_t ), CD_SECTOR_SIZE_AUDIO, binfile_fp );
+	}else {
+	   return usb_scsi_ctx->UsbDvdReadCD_Audio(0,_lba,1,buffer);
+	}
+	return -1;
 }
 
 void CAUDIOCD_PSEUDOFS::createWavHeader(wav_hdr * _hdr,int tracknum){

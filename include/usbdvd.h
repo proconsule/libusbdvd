@@ -47,6 +47,7 @@ typedef struct usbdvd_obj usbdvd_obj;
 
 usbdvd_obj* usbdvd_init();
 usbdvd_obj* usbdvd_initimage(const char * _path);
+usbdvd_obj* usbdvd_initcuebin(const char * _cuepath,const char * _binpath);
 void usbdvd_destroy(usbdvd_obj* obj);
 void usbdvd_eject(usbdvd_obj* obj);
 int usbdvd_mountdisc(usbdvd_obj* obj);
