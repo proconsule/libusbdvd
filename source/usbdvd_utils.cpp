@@ -9,7 +9,7 @@
 static std::mutex log_mutex;
 
 void usbdvd_log(const char *fmt, ...){
-	
+
 #ifdef DEBUG
 	auto lk = std::scoped_lock(log_mutex);
 	char outbuff[1024];
@@ -20,13 +20,13 @@ void usbdvd_log(const char *fmt, ...){
 	va_end( arglist );
 	fflush(stdout);
 #else
-	
+
 
 #endif
 }
 
 uint32_t byte2u32_le(uint8_t * ptr) {
-  
+
   return (static_cast<uint32_t>(ptr[0])) |
          (static_cast<uint32_t>(ptr[1]) << 8) |
          (static_cast<uint32_t>(ptr[2]) << 16) |
@@ -34,7 +34,7 @@ uint32_t byte2u32_le(uint8_t * ptr) {
 }
 
 uint32_t byte2u32_be(uint8_t * ptr) {
-  
+
   return (static_cast<uint32_t>(ptr[3])) |
          (static_cast<uint32_t>(ptr[2]) << 8) |
          (static_cast<uint32_t>(ptr[1]) << 16) |
@@ -43,16 +43,16 @@ uint32_t byte2u32_be(uint8_t * ptr) {
 
 
 uint16_t byte2u16_le(uint8_t * ptr) {
-  
+
   return (static_cast<uint32_t>(ptr[0])) |
          (static_cast<uint32_t>(ptr[1]) << 8);
 }
 
 uint16_t byte2u16_be(uint8_t * ptr) {
-  
+
   return (static_cast<uint32_t>(ptr[1])) |
          (static_cast<uint32_t>(ptr[0]) << 8);
-        
+
 }
 
 struct CueTrack {
@@ -61,23 +61,23 @@ struct CueTrack {
     std::string performer;
     uint8_t minutes;
     uint8_t seconds;
-    uint8_t frames;   
+    uint8_t frames;
     CueTrack() : number(0), minutes(0), seconds(0), frames(0) {}
 };
 
 void lbaToMsf(uint32_t lba, uint8_t* minutes, uint8_t* seconds, uint8_t* frames) {
-	
+
 	long totalFrames = lba;
     *minutes = totalFrames / (75 * 60);
-	totalFrames %= (75 * 60);          
-    *seconds = totalFrames / 75;        
-	*frames = totalFrames % 75;         
+	totalFrames %= (75 * 60);
+    *seconds = totalFrames / 75;
+	*frames = totalFrames % 75;
 }
 
 
 
 bool cuebin_to_TOC(std::string _cuepath,std::string _binpath,CDDVD_TOC * _toc){
-	
+
 	std::vector<CueTrack> tracks;
 	FILE *binfp = fopen(_binpath.c_str(), "rb");
 	if(!binfp)return false;
@@ -85,18 +85,18 @@ bool cuebin_to_TOC(std::string _cuepath,std::string _binpath,CDDVD_TOC * _toc){
 	size_t sz = ftell(binfp);
 	fseek(binfp, 0L, SEEK_SET);
 	fclose(binfp);
-	
+
 	FILE* file = fopen(_cuepath.c_str(), "r");
         if (!file) {
             printf("Impossibile aprire il file %s\r\n",_cuepath.c_str());
 			return false;
         }
-        
-		
+
+
         char line[1024];
         CueTrack currentTrack;
         bool inTrack = false;
-        
+
         while (fgets(line, sizeof(line), file)) {
             // Rimuovi il carattere di newline alla fine
             size_t len = strlen(line);
@@ -106,25 +106,25 @@ bool cuebin_to_TOC(std::string _cuepath,std::string _binpath,CDDVD_TOC * _toc){
                     line[len-2] = '\0';
                 }
             }
-            
+
             // Rimuovi spazi all'inizio
             char* start = line;
             while (*start == ' ' || *start == '\t') {
                 start++;
             }
-            
+
             // Salta righe vuote
             if (*start == '\0') continue;
-            
+
             // Parse del comando
             char command[32];
             if (sscanf(start, "%31s", command) != 1) continue;
-            
+
             if (strcmp(command, "TRACK") == 0) {
                 if (inTrack) {
                     tracks.push_back(currentTrack);
                 }
-                
+
                 int trackNum;
                 char trackType[32];
                 if (sscanf(start, "TRACK %d %31s", &trackNum, trackType) == 2) {
@@ -138,7 +138,7 @@ bool cuebin_to_TOC(std::string _cuepath,std::string _binpath,CDDVD_TOC * _toc){
                 if (titleStart) {
                     titleStart += 5; // Salta "TITLE"
                     while (*titleStart == ' ' || *titleStart == '\t') titleStart++; // Salta spazi
-                    
+
                     // Rimuovi virgolette se presenti
                     if (*titleStart == '"') {
                         titleStart++;
@@ -153,7 +153,7 @@ bool cuebin_to_TOC(std::string _cuepath,std::string _binpath,CDDVD_TOC * _toc){
                 if (performerStart) {
                     performerStart += 9; // Salta "PERFORMER"
                     while (*performerStart == ' ' || *performerStart == '\t') performerStart++; // Salta spazi
-                    
+
                     // Rimuovi virgolette se presenti
                     if (*performerStart == '"') {
                         performerStart++;
@@ -176,7 +176,7 @@ bool cuebin_to_TOC(std::string _cuepath,std::string _binpath,CDDVD_TOC * _toc){
                 }
             }
         }
-        
+
         // Aggiungi l'ultima traccia
         if (inTrack) {
             tracks.push_back(currentTrack);
@@ -186,8 +186,8 @@ bool cuebin_to_TOC(std::string _cuepath,std::string _binpath,CDDVD_TOC * _toc){
 		leadoutTrack.number = 0xaa;
 		lbaToMsf(sz/2352,&leadoutTrack.minutes,&leadoutTrack.seconds,&leadoutTrack.frames);
         tracks.push_back(leadoutTrack);
-        
-		
+
+
 		_toc->hdr.first_track = 1;
 		_toc->hdr.last_track = tracks.size()-1;
 		for(unsigned int i=0;i<tracks.size();i++){
@@ -195,13 +195,11 @@ bool cuebin_to_TOC(std::string _cuepath,std::string _binpath,CDDVD_TOC * _toc){
 			_toc->tracks[i].TNO = tracks[i].number;
 			_toc->tracks[i].MIN = tracks[i].minutes;
 			_toc->tracks[i].SEC = tracks[i].seconds;
-			_toc->tracks[i].FRAME = tracks[i].frames;
-			
+			_toc->tracks[i].FRAME = tracks[i].frames + 150;
+
 		}
-		
-		
+
+
         return true;
-	
+
 }
-
-
