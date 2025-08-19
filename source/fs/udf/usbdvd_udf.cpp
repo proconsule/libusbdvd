@@ -214,6 +214,32 @@ typedef struct
   
 } __attribute__((packed)) udf_file_entry;
 
+typedef struct {
+    UDF_Tag tag;                     // Tag = 266 for Extended File Entry
+    udf_icbtag icb_tag;    
+    uint32_t uid;             
+    uint32_t gid;              
+    uint32_t permissions;  
+    uint16_t link_count;    
+    uint8_t rec_format;     
+    uint8_t rec_disp_attr;     
+    uint32_t rec_len;         
+    uint64_t info_len;  
+    uint64_t object_size;          
+    uint64_t logblks_recorded;  
+    UDF_Timestamp access_time;           
+    UDF_Timestamp modification_time;
+    UDF_Timestamp creation_time;     
+    UDF_Timestamp attribute_time;
+    uint32_t checkpoint;
+    UDF_LongAd ext_attr_ICB;
+    UDF_LongAd stream_directory_icb; 
+    regid_t imp_id;
+    uint64_t unique_ID;
+    uint32_t u_extended_attr;
+    uint32_t u_alloc_descs;
+} __attribute__((packed)) udf_extended_file_entry;
+
 #define DATA_SECOTR_SIZE 2048
 
 typedef struct{
@@ -336,13 +362,9 @@ void CUSBDVD_UDFFS::Parse_FileEntry_Ptr(uint8_t * buffer,disc_dirlist_struct * _
 	_tmpfile->modification_time = udf102_to_unix_timestamp(testentry.modification_time);
 	_tmpfile->attribute_time = udf102_to_unix_timestamp(testentry.attribute_time);
 	
-	
-	
-	
 		
 	UDF_ExtentAd testdesc = {0};
-	memcpy(&testdesc,buffer+fe_pos,testentry.u_alloc_descs);
-	_tmpfile->partlocation = testdesc.location;
+	memcpy(&testdesc,buffer+fe_pos+testentry.u_extended_attr,testentry.u_alloc_descs);
 	_tmpfile->partlocation = testdesc.location;
 	_tmpfile->lba = partitionlba+testdesc.location;
 		
@@ -353,8 +375,8 @@ void CUSBDVD_UDFFS::Parse_FileEntry_Ptr(uint8_t * buffer,disc_dirlist_struct * _
 void CUSBDVD_UDFFS::Parse_FID_Ptr(uint8_t * buffer,std::string _path){
 	
 	uint32_t fid_pos=0;
-	
 	while(true){
+		
 		if(fid_pos+sizeof(file_identifier_descriptor_t) >= DATA_SECOTR_SIZE)break;
 		file_identifier_descriptor_t fid = {0};
 		memcpy(&fid,buffer+fid_pos,sizeof(fid));
@@ -373,13 +395,15 @@ void CUSBDVD_UDFFS::Parse_FID_Ptr(uint8_t * buffer,std::string _path){
 			tmpentry.fullpath = _path + "/" +_filename;
 		}
 		
-		
 		uint8_t fe_buffer[DATA_SECOTR_SIZE];
 		ReadSector(partitionlba+fid.icb.location,fe_buffer);
 		Parse_FileEntry_Ptr(fe_buffer,&tmpentry);
+		
+		
+		
 		if(tmpentry.isdir && tmpentry.name != ""){
 			uint8_t recursive_buffer[DATA_SECOTR_SIZE];
-			ReadSector(partitionlba+tmpentry.partlocation,recursive_buffer);
+			ReadSector(tmpentry.lba,recursive_buffer);
 			Parse_FID_Ptr(recursive_buffer,tmpentry.fullpath.c_str());
 			
 		}
@@ -407,8 +431,7 @@ CUSBDVD_UDFFS::CUSBDVD_UDFFS(std::string _filename)
 	
 	
 	
-	printf(CONSOLE_ESC(13;2H));
-
+	
 	uint8_t udf_pvd[DATA_SECOTR_SIZE];
 	uint8_t udf_pvd_2[DATA_SECOTR_SIZE];
 	uint8_t udf_partdesc[DATA_SECOTR_SIZE];
@@ -466,8 +489,7 @@ CUSBDVD_UDFFS::CUSBDVD_UDFFS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba,uint32_
 	
 	
 	
-	printf(CONSOLE_ESC(13;2H));
-
+	
 	uint8_t udf_pvd[DATA_SECOTR_SIZE];
 	uint8_t udf_pvd_2[DATA_SECOTR_SIZE];
 	uint8_t udf_partdesc[DATA_SECOTR_SIZE];

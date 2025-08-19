@@ -74,7 +74,7 @@ int CAUDIOCD_PSEUDOFS::audiocdfs_readdata(uint32_t tracknum,uint32_t pos,uint32_
   if(pos<44)include_header = true;
   if(include_header){
 	  secpos = 0;
-	  secorreadsize = size-44-pos;
+	  secorreadsize = size-(44-pos);
   }
 
   size_t firstsector =  filelba + (secpos/CD_SECTOR_SIZE_AUDIO);
