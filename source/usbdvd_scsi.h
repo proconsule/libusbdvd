@@ -200,14 +200,28 @@ typedef struct {
     uint16_t data_length;      //    always 0x0006
     uint8_t  reserved[2];
     
-	struct{
-		uint8_t CPRM :4;
-		uint8_t CSS :4;
-	};
+	uint8_t  CSS;
 	uint8_t  region_info;
-    
-    uint16_t reserved2;
+	
 } __attribute__((packed)) dvd_copyright_info_t;
+
+typedef struct{
+	uint16_t datalen;
+	u_int8_t reserved[5];
+	u_int8_t agid;
+	
+
+}__attribute__((packed)) agid_struct;
+
+
+typedef struct 
+{
+	u_int8_t data_len[2];
+	u_int8_t reserved0[2];
+	u_int8_t challenge_key[10];
+	u_int8_t reserved1[2];
+}key_data_challenge_struct;
+
 
 class CUSBSCSI{
 public:
@@ -229,7 +243,11 @@ public:
 	int UsbDvdGetConfig(uint8_t lun,uint8_t *buf);
 	int UsbDvdGetCapacity(uint8_t lun,uint8_t *buf);
 	int UsbDvdReadDVDStructure(uint8_t lun,uint8_t _format,uint16_t allocation_length, void *buf);
-
+	int UsbDvdGetDiscKey(uint8_t lun,uint8_t *buf,uint8_t _agid);
+    int UsbDvdGetAGID(uint8_t lun,uint8_t *buf);
+	int UsbDvdSendPlayerKey(uint8_t lun,uint8_t _agid,uint8_t * _playerkey);
+	int UsbDvdInvalidateAGID(uint8_t lun,uint8_t _agid);
+	int UsbDvdGetChallenge(uint8_t lun,uint8_t _agid,uint8_t *buf);
 	int UsbDvd_Eject(uint8_t lun);
 
 	int send_scsi_command(CBW *cbw,bool receive,void *buf);

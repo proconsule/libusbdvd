@@ -56,8 +56,8 @@ disc_dirlist_struct * CUSBDVD_DATADISC::GetFileDescFromIDX(int idx){
 }
 
 int CUSBDVD_DATADISC::FindFile(std::string _filename){
-    for(unsigned int i=0;i<disc_dirlist.size();i++){
-        if(_filename == disc_dirlist[i].fullpath){
+	for(unsigned int i=0;i<disc_dirlist.size();i++){
+		if(_filename == disc_dirlist[i].fullpath){
            return i;
         }
     }
@@ -75,12 +75,24 @@ int CUSBDVD_DATADISC::ReadSector(uint32_t sector,uint8_t * buffer){
 	return -1;
 }
 
+int CUSBDVD_DATADISC::ReadNumSectors(uint32_t startsector,uint16_t numblocks,uint8_t * buffer){
+	
+	if(isofile){
+        //isofile_filesectorread(sector,buffer);
+		return 0;
+    }else{
+		return usb_scsi_ctx->UsbDvdReadCD_Data(0,startsector,numblocks,buffer);
+	}
+	return -1;
+}
+
 
 int CUSBDVD_DATADISC::isofile_filesectorread(uint32_t sector,uint8_t *buffer){
     fseek(isofp,sector*DATA_SECOTR_SIZE,SEEK_SET);
     fread(buffer, sizeof(uint8_t), DATA_SECOTR_SIZE,isofp);
     return 0;
 }
+
 
 int CUSBDVD_DATADISC::ReadData(disc_dirlist_struct * _filedesc,uint32_t pos,uint32_t size,uint8_t * buf){
     
@@ -103,8 +115,9 @@ int CUSBDVD_DATADISC::ReadData(disc_dirlist_struct * _filedesc,uint32_t pos,uint
 		
 		if(numblock != read_sector){
 			ReadSector(numblock,read_buffer);
+			read_sector = numblock;
 		}
-		read_sector = numblock;
+		
 		
 		memcpy(buf+buffosff,read_buffer+offsetinblock,toread);
 		
@@ -118,3 +131,22 @@ int CUSBDVD_DATADISC::ReadData(disc_dirlist_struct * _filedesc,uint32_t pos,uint
 	
 
 }
+
+
+int CUSBDVD_DATADISC::ReadSectorsLen(uint32_t startsector,uint32_t _len,uint8_t * buffer){
+	
+	size_t lastsector = startsector + (_len/DATA_SECOTR_SIZE)+1;
+	size_t interbufferlen = 1+(lastsector-startsector)*DATA_SECOTR_SIZE;
+	uint8_t interbuf[interbufferlen];
+	size_t buffosff = 0;
+	
+	
+	for(size_t numblock = startsector;numblock<lastsector ;numblock++){
+		ReadSector(numblock,read_buffer);
+		memcpy(&interbuf[buffosff],read_buffer,DATA_SECOTR_SIZE);
+		buffosff+=DATA_SECOTR_SIZE;
+	}
+	memcpy(buffer,interbuf,_len);
+	return 0;
+}
+

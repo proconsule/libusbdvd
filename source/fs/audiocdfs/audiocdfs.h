@@ -54,7 +54,8 @@ public:
 private:
 
 	CUSBSCSI *usb_scsi_ctx;
-    int ReadCD_Audio_Frame(uint32_t _lba,uint8_t *buffer);     
+    int ReadCD_Audio_Frame(uint32_t _lba,uint8_t *buffer);    
+    int ReadCD_Num_Audio_Frames(uint32_t _lba,uint16_t _num,uint8_t *buffer);	
 	uint8_t lastbuffer[CD_SECTOR_SIZE_AUDIO];
 	uint32_t sectornum;
 	bool iscdaudio = false;

@@ -9,6 +9,20 @@
 #include <usbdvd.h>
 
 
+int getDvdRegion(unsigned char rmi_byte, int regions[]) {
+    int count = 0;
+    
+    for (int i = 0; i < 8; i++) {
+        unsigned char mask = 1 << i;
+        if ((rmi_byte & mask) == 0) {
+            regions[count] = i + 1;
+            count++;
+        }
+    }
+    
+    return count;
+}
+
 void print_drive_info(usbdvd_obj* test){
 	
 	printf( CONSOLE_ESC(2J) );
@@ -24,7 +38,18 @@ void print_drive_info(usbdvd_obj* test){
 		printf(CONSOLE_ESC(7;2H)CONSOLE_ESC(0m)"product_revision:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),drivectx->product_revision);
 		printf(CONSOLE_ESC(8;2H)CONSOLE_ESC(0m)"serial_number:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),drivectx->serial_number);
 		printf(CONSOLE_ESC(9;2H)CONSOLE_ESC(0m)"Disc Type:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),drivectx->disc_type);
-		
+		int printoff = 0;
+		if(drivectx->dvd_protection.CSS){
+			printf(CONSOLE_ESC(10;2H)CONSOLE_ESC(1m)"Disc CSS Encrypted\r\n"CONSOLE_ESC(0m));
+			int myregions[8];
+			int rcnt = getDvdRegion(drivectx->dvd_protection.regions,myregions);
+			printf(CONSOLE_ESC(11;2H)CONSOLE_ESC(0m)"Disc Region: "CONSOLE_ESC(0m));
+			for(int i=0;i<rcnt;i++){
+				printf("%d ",myregions[i]);
+			}
+			printf("\r\n");
+			
+		}
 		
 	
 		// Check if a supported filesystem was mounted
@@ -64,7 +89,7 @@ void print_drive_info(usbdvd_obj* test){
 					if (( strlen(dir->fileData.d_name) == 2) && dir->fileData.d_name[0] == '.' && dir->fileData.d_name[1] == '.') {
 						continue;
 					}
-					printf(CONSOLE_ESC(1m)"%s %d\n"CONSOLE_ESC(0m),dir->fileData.d_name,st.st_size);
+					printf(CONSOLE_ESC(1m)"%s %s %d\n"CONSOLE_ESC(0m),st.st_mode == S_IFDIR ? "<dir>":"<file>",dir->fileData.d_name,st.st_size);
 				}
 						
 				closedir(dir);
@@ -77,7 +102,6 @@ void print_drive_info(usbdvd_obj* test){
 	
 	
 }
-
 
 
 int main(int argc, const char* const* argv) {

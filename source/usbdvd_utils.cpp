@@ -203,3 +203,26 @@ bool cuebin_to_TOC(std::string _cuepath,std::string _binpath,CDDVD_TOC * _toc){
         return true;
 
 }
+
+std::string trim_left(const std::string& str)
+{
+  const std::string pattern = " \f\n\r\t\v";
+  return str.substr(str.find_first_not_of(pattern));
+}
+
+//
+//Right trim
+//
+std::string trim_right(const std::string& str)
+{
+  const std::string pattern = " \f\n\r\t\v";
+  return str.substr(0,str.find_last_not_of(pattern) + 1);
+}
+
+//
+//Left and Right trim
+//
+std::string trim(const std::string& str)
+{
+  return trim_left(trim_right(str));
+}

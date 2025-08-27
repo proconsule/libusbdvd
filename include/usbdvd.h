@@ -8,7 +8,7 @@ extern "C" {
 
 #define LIBUSBDVD_VERSION_MAJOR    0
 #define LIBUSBDVD_VERSION_MINOR    0
-#define LIBUSBDVD_VERSION_MICRO    6
+#define LIBUSBDVD_VERSION_MICRO    7
 
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
@@ -31,6 +31,12 @@ typedef struct{
 }usbdvd_fs_struct;
 
 typedef struct{
+	bool CSS;
+	uint8_t regions;  //Inverted Bit Mask ex: Region 2 DVD: RMI = 0xFD (11111101 - solo bit 1 è 0)
+}dvdprotection_struct;
+
+
+typedef struct{
 	bool drive_found;
 	bool fileimage;
 	char vendor_id[0x8+1];
@@ -39,6 +45,7 @@ typedef struct{
     char serial_number[0x8+1];
 	char disc_type[0x20];
 	uint64_t disc_size;
+	dvdprotection_struct dvd_protection;
 	usbdvd_fs_struct fs;
 }usbdvd_drive_struct;
 

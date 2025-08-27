@@ -89,7 +89,11 @@ ssize_t   SWITCH_UDFFS::udffs_read     (struct _reent *r, void *fd, char *ptr, s
     auto lk = std::scoped_lock(priv->session_mutex);
 	
 	disc_dirlist_struct * _filedesc = priv->UDFFS->GetFileDescFromIDX(priv_file->filelist_id);
-	priv->UDFFS->ReadData(_filedesc,priv_file->offset,len,(uint8_t *)ptr);
+	//priv->UDFFS->ReadData(_filedesc,priv_file->offset,len,(uint8_t *)ptr);
+	
+	priv->UDFFS->UDFReadData(_filedesc,priv_file->offset,len,(uint8_t *)ptr);
+	
+	//UDFReadData(disc_dirlist_struct * _filedesc,uint32_t pos,uint32_t size,uint8_t * buf)
 	
 	priv_file->offset=priv_file->offset+len;
 	

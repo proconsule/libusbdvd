@@ -88,7 +88,9 @@ $(eval LIB_VERSION = $(LIB_VERSION_MAJOR).$(LIB_VERSION_MINOR).$(LIB_VERSION_MIC
 .PHONY: clean all
 
 #---------------------------------------------------------------------------------
-all: lib/$(TARGET).a lib/$(TARGET)d.a
+all: libs examples
+
+libs: lib/$(TARGET).a lib/$(TARGET)d.a
 
 lib:
 	@[ -d $@ ] || mkdir -p $@
@@ -112,6 +114,12 @@ lib/$(TARGET)d.a : lib debug $(SOURCES) $(INCLUDES)
 	DEPSDIR=$(CURDIR)/debug \
 	--no-print-directory -C debug \
 	-f $(CURDIR)/Makefile
+
+examples: libs
+	@$(MAKE) -C examples/example_c -f Makefile clean
+	@$(MAKE) --no-print-directory -C examples/example_c -f Makefile
+	cp $(CURDIR)/examples/example_c/libusbdvd-example-c.nro $(CURDIR)/
+	
 
 dist-bin: all
 	@tar --exclude=*~ -cjf $(TARGET)-$(LIB_VERSION).tar.bz2 include lib

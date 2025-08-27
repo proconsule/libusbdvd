@@ -168,6 +168,18 @@ int CAUDIOCD_PSEUDOFS::ReadCD_Audio_Frame(uint32_t _lba,uint8_t *buffer){
 	return -1;
 }
 
+int CAUDIOCD_PSEUDOFS::ReadCD_Num_Audio_Frames(uint32_t _lba,uint16_t _num,uint8_t *buffer){
+	if(isfile){
+		if(!binfile_fp)return -1;
+		uint32_t filepos = _lba*CD_SECTOR_SIZE_AUDIO;
+		fseek(binfile_fp,filepos,SEEK_SET);
+		fread( buffer, sizeof( uint8_t ), CD_SECTOR_SIZE_AUDIO * _num, binfile_fp );
+	}else {
+	   return usb_scsi_ctx->UsbDvdReadCD_Audio(0,_lba,_num,buffer);
+	}
+	return -1;
+}
+
 void CAUDIOCD_PSEUDOFS::createWavHeader(wav_hdr * _hdr,int tracknum){
 
     _hdr->ChunkSize = audiocdfs_gettracksize(tracknum) + sizeof(wav_hdr) - 8;
