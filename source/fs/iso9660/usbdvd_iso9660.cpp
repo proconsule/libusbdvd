@@ -1,6 +1,7 @@
 #include "usbdvd_iso9660.h"
 #include "usbdvd_utils.h"
 #include <time.h>
+#include <dirent.h>
 
 #define DATA_SECOTR_SIZE 2048
 
@@ -423,7 +424,7 @@ void CUSBDVD_ISO9660FS::list_dir_iso9660(uint32_t sector, const std::string path
 							uint8_t *timestamps = rr_loop_ptr+rr_offset;
 							for (int i = 0; i < timestamp_count; i++) {
 								uint8_t *current_timestamp = timestamps + 5 + (i * timestamp_size);
-								if (tfdata.flags_byte & 0x01 && i == 0) {
+								if (tfdata.flags_byte & 0x01) {
 									
 									rockridge_tf_timeformat_struct tf_timeformat = {0};
 									memcpy(&tf_timeformat,current_timestamp,sizeof(rockridge_tf_timeformat_struct));
@@ -451,7 +452,6 @@ void CUSBDVD_ISO9660FS::list_dir_iso9660(uint32_t sector, const std::string path
 							
 							rockridge_px_struct pxdata = {0};
 							memcpy(&pxdata,rr_loop_ptr+rr_offset,sizeof(rockridge_px_struct));
-							tmp.st_mode = byte2u32_le(pxdata.st_mode_le);
 							tmp.st_nlink = byte2u32_le(pxdata.st_nlink_le);
 							tmp.st_gid = byte2u32_le(pxdata.st_gid_le);
 							tmp.st_uid = byte2u32_le(pxdata.st_uid_le);
@@ -471,7 +471,7 @@ void CUSBDVD_ISO9660FS::list_dir_iso9660(uint32_t sector, const std::string path
 							tmp.lba = byte2u32_le(record->root_lba_le);
 							tmp.fullpath = full_path_rr;
 							tmp.isdir = is_directory;
-							
+							tmp.st_mode = is_directory ? S_IFDIR : S_IFREG;
 						}else{
 							break;
 						}

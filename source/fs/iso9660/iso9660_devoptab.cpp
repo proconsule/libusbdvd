@@ -226,6 +226,7 @@ void iso9660fsstat_entry(disc_dirlist_struct *_filedesc, struct stat *st,bool ro
 		st->st_atime = _filedesc->access_time;
 		st->st_mtime = _filedesc->modification_time;
 		st->st_ctime = _filedesc->attribute_time;
+		st->st_blksize = 2048;
 	}else{
 		st->st_mode =  _filedesc->isdir ? S_IFDIR : S_IFREG;
 		st->st_nlink = 1;
@@ -235,6 +236,7 @@ void iso9660fsstat_entry(disc_dirlist_struct *_filedesc, struct stat *st,bool ro
 		st->st_atime = _filedesc->time;
 		st->st_mtime = _filedesc->time;
 		st->st_ctime = _filedesc->time;
+		st->st_blksize = 2048;
 	}
 	
 	

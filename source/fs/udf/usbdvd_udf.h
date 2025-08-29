@@ -15,6 +15,8 @@ typedef struct {
     uint32_t location;   
     uint32_t logical_block_size; 
     uint32_t number_of_partition_maps;  
+	uint32_t udfver;
+	uint32_t metadata_partition_size;
     std::string udf_version_string;
     std::string VolumeIdentifier;
     uint32_t meta_partition_location;

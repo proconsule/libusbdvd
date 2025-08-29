@@ -39,6 +39,11 @@ typedef struct{
 	
 }disc_dirlist_struct;
 
+typedef struct{
+	uint8_t read_buffer[2048];
+    uint8_t read_sector = 0;
+}drive_readbuf_struct;
+
 class CUSBDVD_DATADISC{
 public:
     CUSBDVD_DATADISC(std::string _filename);
@@ -76,8 +81,9 @@ protected:
 	uint32_t absstartlba;
 	uint32_t absendlba;
 	
-	uint8_t read_buffer[2048];
-    uint8_t read_sector = 0;
+	drive_readbuf_struct drive_readbuffer;
+	//uint8_t read_buffer[2048];
+    //uint8_t read_sector = 0;
     
     
 };

@@ -17,7 +17,7 @@
 #define USB_BUF_ALIGNMENT	0x1000
 #define USB_TRANS_BUF_SIZE	0x100000
 
-#define RETRY_MAX 5
+#define RETRY_MAX 1
 
 	
 enum usb_request_bot {
@@ -163,7 +163,7 @@ int CSWITCH_USB::usb_bulk_transfer(bool receive,void *buf,uint32_t data_size,uin
 	Result rc = -1;
 	int i = 0;
     	do {
-            rc = usbRequestTransfer(receive ? &endpoint_in : &endpoint_out, (void *)xfer_buf, data_size, data_transfered,timeout*100000);
+            rc = usbRequestTransfer(receive ? &endpoint_in : &endpoint_out, (void *)xfer_buf, data_size, data_transfered,timeout);
             if (R_FAILED(rc)) {
 				usb_clear_halt(&inf_session,receive ? &endpoint_in:&endpoint_out);
             }

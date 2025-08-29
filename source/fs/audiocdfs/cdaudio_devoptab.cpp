@@ -220,5 +220,6 @@ void cdaudiostat_entry(int _tracksize, struct stat *st)
 	st->st_atime = 0;
 	st->st_mtime = 0;
 	st->st_ctime = 0;
+	st->st_blksize = 2352;
 	
 }

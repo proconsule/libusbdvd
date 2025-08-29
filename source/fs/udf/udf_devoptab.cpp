@@ -230,5 +230,5 @@ void udffsstat_entry(disc_dirlist_struct *_filedesc, struct stat *st)
 	st->st_atime = _filedesc->access_time;
 	st->st_mtime = _filedesc->modification_time;
 	st->st_ctime = _filedesc->attribute_time;
-	
+	st->st_blksize = 2048;
 }
