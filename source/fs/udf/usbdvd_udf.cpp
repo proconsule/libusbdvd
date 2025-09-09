@@ -499,6 +499,7 @@ void CUSBDVD_UDFFS::Parse_ExtendedFileEntry_Ptr(uint8_t * buffer,disc_dirlist_st
 	if(testentry.tag.tag_identifier != 266)return;
 	if(testentry.icb_tag.file_type == 0x04)_tmpfile->isdir = true;
     if(testentry.icb_tag.file_type == 0x05)_tmpfile->isdir = false;
+    if(testentry.icb_tag.file_type == 0xf9)_tmpfile->isdir = false;
     
 	
     fe_pos+=sizeof(udf_extended_file_entry);
@@ -537,11 +538,12 @@ void CUSBDVD_UDFFS::Parse_ExtendedFileEntry_Ptr(uint8_t * buffer,disc_dirlist_st
 			_tmpfile->extents.push_back(tmpextent);
 		}
 	}
+    if(_alloctype == 2){
+        printf("EXTENEDE ATTR AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\r\n");
+    }
 	
-	usbdvd_log("File %s have %lu extents\r\n",_tmpfile->name.c_str(),_tmpfile->extents.size());
+	//printf("File %s have %lu extents\r\n",_tmpfile->name.c_str(),_tmpfile->extents.size());
 	if(_tmpfile->extents.size()>1){
-		
-		_tmpfile->isdir = false;
 		_tmpfile->size = 0;
 		for(unsigned int i=0;i<_tmpfile->extents.size();i++){
 			_tmpfile->size += _tmpfile->extents[i].length;
@@ -884,7 +886,7 @@ CUSBDVD_UDFFS::CUSBDVD_UDFFS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba,uint32_
 	disc_lvd.location = testlvd.logical_volume_contents_use.location;
 	disc_lvd.length = testlvd.logical_volume_contents_use.length;
 	disc_lvd.number_of_partition_maps = testlvd.number_of_partition_maps;
-        
+      
 	disc_lvd.metadata_partition_size = 0;
 	disc_lvd.udfver = udfver;
     
@@ -903,7 +905,7 @@ CUSBDVD_UDFFS::CUSBDVD_UDFFS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba,uint32_
             
 		maplen+=maptest[1];
 	}
-        
+    
         
 	uint32_t partlbalocation = partdesc.partition_starting_location+testlvd.logical_volume_contents_use.location;
 	partitionlba = partlbalocation;
@@ -934,7 +936,8 @@ CUSBDVD_UDFFS::CUSBDVD_UDFFS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba,uint32_
 		ReadSector(partlbalocation+testdesc.location,root_fid);
 		Parse_FID_Ptr(root_fid,"/",DATA_SECOTR_SIZE);
             
-        }
+    }
+   
 	if(udf_first_descriptor[0] == 0x0a && udf_first_descriptor[1] == 0x01){
 			udf_extended_file_entry root_filentry = {0};
             memcpy(&root_filentry,udf_first_descriptor,sizeof(udf_extended_file_entry));
@@ -943,6 +946,7 @@ CUSBDVD_UDFFS::CUSBDVD_UDFFS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba,uint32_
 			
 			metadata_partition_buffer = (uint8_t *)malloc(root_filentry.info_len*sizeof(uint8_t));
 			disc_lvd.metadata_partition_size = root_filentry.info_len;
+           
 			std::vector<udf_extent_struct> metadata_extents;
 			if(_alloctype == 0x00){
 				
@@ -971,7 +975,9 @@ CUSBDVD_UDFFS::CUSBDVD_UDFFS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba,uint32_
 				tmpextent.partition_reference = firsttestdesc.partition_reference;
 				metadata_extents.push_back(tmpextent);
 			}
-			uint32_t _buffoff = 0;
+            
+            uint32_t _buffoff = 0;
+            if(metadata_partition_buffer==NULL)return;
 			usbdvd_log("Metadata Partition Extents: %lu\r\n",metadata_extents.size());
 			for(unsigned int i=0;i<metadata_extents.size();i++){
 				usbdvd_log("Reading Metadata Partition: LBA %u OFF %u SECTORS: %u\r\n",partitionlba,metadata_extents[i].location,metadata_extents[i].length/DATA_SECOTR_SIZE);
@@ -981,7 +987,7 @@ CUSBDVD_UDFFS::CUSBDVD_UDFFS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba,uint32_
 			}
 			
 			
-			if(metadata_partition_buffer==NULL)return;
+			
 			
 			// DOING SEQUENTIAL READ OF METADATA PARTITION 
 			//uint8_t bigbuffer[root_filentry.info_len];
@@ -1040,6 +1046,7 @@ CUSBDVD_UDFFS::CUSBDVD_UDFFS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba,uint32_
             
         }
 #endif
+
 }
 
 
@@ -1063,7 +1070,7 @@ int CUSBDVD_UDFFS::ReadExtents(std::vector<sector_range_struct> _seclist,uint32_
 }
 
 
-/*
+
 
 int CUSBDVD_UDFFS::UDFReadData(disc_dirlist_struct * _filedesc,uint32_t pos,uint32_t size,uint8_t * buf){
     
@@ -1101,7 +1108,9 @@ int CUSBDVD_UDFFS::UDFReadData(disc_dirlist_struct * _filedesc,uint32_t pos,uint
 
 }
 
-*/
+
+
+/*
 
 int CUSBDVD_UDFFS::UDFReadData(disc_dirlist_struct * _filedesc,uint32_t pos,uint32_t size,uint8_t * buf){
     
@@ -1145,7 +1154,7 @@ int CUSBDVD_UDFFS::UDFReadData(disc_dirlist_struct * _filedesc,uint32_t pos,uint
 
 }
 
-
+*/
 
 /*
 

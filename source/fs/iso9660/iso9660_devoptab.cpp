@@ -5,12 +5,12 @@ void iso9660fsstat_entry(disc_dirlist_struct *_filedesc, struct stat *st,bool ro
 
 SWITCH_ISO9660FS::SWITCH_ISO9660FS(CUSBDVD_ISO9660FS *_ctx,std::string _name,std::string _mount_name){
 
-	this->ISO9660FS = _ctx;
-	
-	
-	this->name       = _name;
+    this->ISO9660FS = _ctx;
+    
+    
+    this->name       = _name;
     this->mount_name = _mount_name;
-	
+    
     this->devoptab = {
         .name         = SWITCH_ISO9660FS::name.data(),
 
@@ -36,70 +36,80 @@ SWITCH_ISO9660FS::SWITCH_ISO9660FS(CUSBDVD_ISO9660FS *_ctx,std::string _name,std
 
         .lstat_r      = SWITCH_ISO9660FS::iso9660fs_stat,
     };
-	
-	if(connect() == 0){
-		register_fs();
-	}
+    
+    if(connect() == 0){
+        register_fs();
+    }
 
 }
 
 int SWITCH_ISO9660FS::connect(){
-	
-	
-	return 0;
+    
+    
+    return 0;
 }
 
 
 SWITCH_ISO9660FS::~SWITCH_ISO9660FS(){
-	
-	unregister_fs();
+    
+    unregister_fs();
 }
 
 int  SWITCH_ISO9660FS::iso9660fs_open     (struct _reent *r, void *fileStruct, const char *path, int flags, int mode){
-	auto *priv      = static_cast<SWITCH_ISO9660FS     *>(r->deviceData);
+    auto *priv      = static_cast<SWITCH_ISO9660FS     *>(r->deviceData);
     auto *priv_file = static_cast<SWITCH_ISO9660FSFile *>(fileStruct);
-
-	if(std::string(path).empty()){
-		return -1;
-	}
-	
-	int fileret = priv->ISO9660FS->FindFile(&path[5]);
-	if(fileret<0)return -1;
-	
-	priv_file->filelist_id = fileret;
-	priv_file->offset = 0;
-	
+    if(std::string(path).empty()){
+        return 0;
+    }
+    
+    int fileret = priv->ISO9660FS->FindFile(&path[5]);
+    if(fileret<0)return -1;
+    if(priv->ISO9660FS->DVD_CSS){
+        priv_file-> csskey_idx = priv->ISO9660FS->FindTitleKey_IDX(&path[5]);
+        printf("USING KEY: %s %d\r\n",path,priv_file-> csskey_idx);
+    }
+    priv_file->filelist_id = fileret;
+    priv_file->offset = 0;
+    
+    
     
     return 0;
-	
+    
 }
 
 int  SWITCH_ISO9660FS::iso9660fs_close    (struct _reent *r, void *fd){
-	//auto *priv      = static_cast<SWITCH_ISO9660FS     *>(r->deviceData);
+    auto *priv      = static_cast<SWITCH_ISO9660FS     *>(r->deviceData);
     //auto *priv_file = static_cast<SWITCH_ISO9660FSFile *>(fd);
-	
-	
+    priv->ISO9660FS->currenttitlekey_idx = -1;
+    
     return 0;
 }
 
 ssize_t   SWITCH_ISO9660FS::iso9660fs_read     (struct _reent *r, void *fd, char *ptr, size_t len){
-	auto *priv      = static_cast<SWITCH_ISO9660FS     *>(r->deviceData);
+    auto *priv      = static_cast<SWITCH_ISO9660FS     *>(r->deviceData);
     auto *priv_file = static_cast<SWITCH_ISO9660FSFile *>(fd);
 
     auto lk = std::scoped_lock(priv->session_mutex);
-	
-	disc_dirlist_struct * _filedesc = priv->ISO9660FS->GetFileDescFromIDX(priv_file->filelist_id);
-	priv->ISO9660FS->ReadData(_filedesc,priv_file->offset,len,(uint8_t *)ptr);
-	
-	priv_file->offset=priv_file->offset+len;
-	
-	
-	return len;
+    
+    disc_dirlist_struct * _filedesc = priv->ISO9660FS->GetFileDescFromIDX(priv_file->filelist_id);
+    if(priv->ISO9660FS->DVD_CSS){
+        if(priv->ISO9660FS->currenttitlekey_idx != priv_file->csskey_idx){
+            priv->ISO9660FS->usb_scsi_ctx->GetBusKey();
+        }
+        priv->ISO9660FS->currenttitlekey_idx = priv_file->csskey_idx;
+    }
+    
+    priv->ISO9660FS->ReadData(_filedesc,priv_file->offset,len,(uint8_t *)ptr);
+    
+    priv_file->offset=priv_file->offset+len;
+    
+    
+    return len;
 
 }
 
 off_t     SWITCH_ISO9660FS::iso9660fs_seek     (struct _reent *r, void *fd, off_t pos, int dir){
-	auto *priv      = static_cast<SWITCH_ISO9660FS     *>(r->deviceData);
+    auto *priv      = static_cast<SWITCH_ISO9660FS     *>(r->deviceData);
     auto *priv_file = static_cast<SWITCH_ISO9660FSFile *>(fd);
 
     off_t offset;
@@ -117,127 +127,131 @@ off_t     SWITCH_ISO9660FS::iso9660fs_seek     (struct _reent *r, void *fd, off_
     }
 
     
-	auto lk = std::scoped_lock(priv->session_mutex);
-	
-	priv_file->offset = offset + pos;
-	
-	
-	
+    auto lk = std::scoped_lock(priv->session_mutex);
+    
+    priv_file->offset = offset + pos;
+    
+    
+    
     return priv_file->offset;
 }
 
 int       SWITCH_ISO9660FS::iso9660fs_fstat    (struct _reent *r, void *fd, struct stat *st){
-	auto *priv = static_cast<SWITCH_ISO9660FS *>(r->deviceData);
-	auto *priv_file = static_cast<SWITCH_ISO9660FSFile *>(fd);
+    auto *priv = static_cast<SWITCH_ISO9660FS *>(r->deviceData);
+    auto *priv_file = static_cast<SWITCH_ISO9660FSFile *>(fd);
     auto lk = std::scoped_lock(priv->session_mutex);
-	
-	disc_dirlist_struct * _filedesc = priv->ISO9660FS->GetFileDescFromIDX(priv_file->filelist_id);
-	iso9660fsstat_entry(_filedesc,st,priv->ISO9660FS->isrockridge);
-	
-	return 0;
+    disc_dirlist_struct * _filedesc = priv->ISO9660FS->GetFileDescFromIDX(priv_file->filelist_id);
+    iso9660fsstat_entry(_filedesc,st,priv->ISO9660FS->isrockridge);
+    
+    printf("iso9660fs_fstat: %s\r\n",_filedesc->fullpath.c_str());
+    
+    
+    return 0;
 }
 
 int       SWITCH_ISO9660FS::iso9660fs_stat     (struct _reent *r, const char *file, struct stat *st){
-	auto *priv     = static_cast<SWITCH_ISO9660FS    *>(r->deviceData);
-	
-	
-	disc_dirlist_struct myfiledesc;
-	int ret = priv->ISO9660FS->GetFileDesc(&file[5],myfiledesc);
-	
-	iso9660fsstat_entry(&myfiledesc,st,priv->ISO9660FS->isrockridge);
-	return ret;
+    auto *priv     = static_cast<SWITCH_ISO9660FS    *>(r->deviceData);
+    
+    
+    disc_dirlist_struct myfiledesc;
+    int fileret = priv->ISO9660FS->FindFile(&file[5]);
+    if(fileret==-1)return -1;
+    disc_dirlist_struct * _filedesc = priv->ISO9660FS->GetFileDescFromIDX(fileret);
+    printf("iso9660fs_stat: %s %d\r\n",&file[5],fileret);
+    iso9660fsstat_entry(    _filedesc,st,priv->ISO9660FS->isrockridge);
+    
+    return 0;
 
 }
 
 int       SWITCH_ISO9660FS::iso9660fs_chdir    (struct _reent *r, const char *name){
-	
+    
     return 0;
 }
 
 DIR_ITER * SWITCH_ISO9660FS::iso9660fs_diropen  (struct _reent *r, DIR_ITER *dirState, const char *path){
-	auto *priv = static_cast<SWITCH_ISO9660FS *>(r->deviceData);
-	auto *priv_dir = static_cast<SWITCH_ISO9660FSDir *>(dirState->dirStruct);
-	
-	
-	priv->currdirlist.clear();
-	for(int i=0;i<(int)priv->ISO9660FS->disc_dirlist.size();i++){
-		std::filesystem::path epath{priv->ISO9660FS->disc_dirlist[i].fullpath};
-		if(epath.parent_path().string() == std::string(&path[5])){
-			priv->currdirlist.push_back(priv->ISO9660FS->disc_dirlist[i]);
-		}
+    auto *priv = static_cast<SWITCH_ISO9660FS *>(r->deviceData);
+    auto *priv_dir = static_cast<SWITCH_ISO9660FSDir *>(dirState->dirStruct);
+    
+    priv->currdirlist.clear();
+    for(int i=0;i<(int)priv->ISO9660FS->disc_dirlist.size();i++){
+        std::filesystem::path epath{priv->ISO9660FS->disc_dirlist[i].fullpath};
+        if(epath.parent_path().string() == std::string(&path[5]) || epath.parent_path().string()+ "/" == std::string(&path[5]) ){
+            priv->currdirlist.push_back(priv->ISO9660FS->disc_dirlist[i]);
+        }
                 
-	}
-	
-	
-	priv_dir->dirnext_idx = 0;
-	
-	return dirState;
+    }
+    
+    
+    priv_dir->dirnext_idx = 0;
+    
+    return dirState;
 }
 
 int   SWITCH_ISO9660FS::iso9660fs_dirreset (struct _reent *r, DIR_ITER *dirState){
-	__errno_r(r) = ENOSYS;
+    __errno_r(r) = ENOSYS;
     return -1;
 }
 
 int       SWITCH_ISO9660FS::iso9660fs_dirnext  (struct _reent *r, DIR_ITER *dirState, char *filename, struct stat *filestat){
-	auto *priv     = static_cast<SWITCH_ISO9660FS    *>(r->deviceData);
+    auto *priv     = static_cast<SWITCH_ISO9660FS    *>(r->deviceData);
     auto *priv_dir = static_cast<SWITCH_ISO9660FSDir *>(dirState->dirStruct);
 
     auto lk = std::scoped_lock(priv->session_mutex);
-	
-	if(priv_dir->dirnext_idx >= (int)priv->currdirlist.size()){
-		return -1;
-	}
-	memset(filename, 0, NAME_MAX);
-	
-	memcpy(filename,priv->currdirlist[priv_dir->dirnext_idx].name.c_str(),255);
-	iso9660fsstat_entry(&priv->currdirlist[priv_dir->dirnext_idx],filestat,priv->ISO9660FS->isrockridge);
-	
-	priv_dir->dirnext_idx +=1;
-	
-	return 0;
+    
+    if(priv_dir->dirnext_idx >= (int)priv->currdirlist.size()){
+        return -1;
+    }
+    memset(filename, 0, NAME_MAX);
+    
+    memcpy(filename,priv->currdirlist[priv_dir->dirnext_idx].name.c_str(),255);
+    iso9660fsstat_entry(&priv->currdirlist[priv_dir->dirnext_idx],filestat,priv->ISO9660FS->isrockridge);
+    
+    priv_dir->dirnext_idx +=1;
+    
+    return 0;
 }
 
 int       SWITCH_ISO9660FS::iso9660fs_dirclose (struct _reent *r, DIR_ITER *dirState){
-	auto *priv     = static_cast<SWITCH_ISO9660FS    *>(r->deviceData);
+    auto *priv     = static_cast<SWITCH_ISO9660FS    *>(r->deviceData);
     
-	auto lk = std::scoped_lock(priv->session_mutex);
-	
-	
-	
-	return 0;
+    auto lk = std::scoped_lock(priv->session_mutex);
+    
+    
+    
+    return 0;
 }
 
 int       SWITCH_ISO9660FS::iso9660fs_statvfs  (struct _reent *r, const char *path, struct statvfs *buf){
-			
-	
-	return 0;
+            
+    
+    return 0;
 }
 
 void iso9660fsstat_entry(disc_dirlist_struct *_filedesc, struct stat *st,bool rockridge)
 {
-	*st = {};
-	if(rockridge){
-		st->st_mode =  _filedesc->st_mode;
-		st->st_nlink =  _filedesc->st_nlink;
-		st->st_uid =  _filedesc->st_uid;
-		st->st_gid =  _filedesc->st_gid;
-		st->st_size = _filedesc->size;
-		st->st_atime = _filedesc->access_time;
-		st->st_mtime = _filedesc->modification_time;
-		st->st_ctime = _filedesc->attribute_time;
-		st->st_blksize = 2048;
-	}else{
-		st->st_mode =  _filedesc->isdir ? S_IFDIR : S_IFREG;
-		st->st_nlink = 1;
-		st->st_uid = 1;
-		st->st_gid = 2;
-		st->st_size = _filedesc->size;
-		st->st_atime = _filedesc->time;
-		st->st_mtime = _filedesc->time;
-		st->st_ctime = _filedesc->time;
-		st->st_blksize = 2048;
-	}
-	
-	
+    *st = {};
+    if(rockridge){
+        st->st_mode =  _filedesc->st_mode;
+        st->st_nlink =  _filedesc->st_nlink;
+        st->st_uid =  _filedesc->st_uid;
+        st->st_gid =  _filedesc->st_gid;
+        st->st_size = _filedesc->size;
+        st->st_atime = _filedesc->access_time;
+        st->st_mtime = _filedesc->modification_time;
+        st->st_ctime = _filedesc->attribute_time;
+        st->st_blksize = 2048;
+    }else{
+        st->st_mode =  _filedesc->isdir ? S_IFDIR : S_IFREG;
+        st->st_nlink = 1;
+        st->st_uid = 1;
+        st->st_gid = 2;
+        st->st_size = _filedesc->size;
+        st->st_atime = _filedesc->time;
+        st->st_mtime = _filedesc->time;
+        st->st_ctime = _filedesc->time;
+        st->st_blksize = 2048;
+    }
+    
+    
 }

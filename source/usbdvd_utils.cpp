@@ -5,20 +5,29 @@
 #include <switch.h>
 #include <string.h>
 #include <vector>
+#include <sys/stat.h>
+
+#include <mbedtls/md5.h>
+#include <string>
+#include <sstream>
+#include <iomanip>
+#include <cstring>
+
+#include "csstables.h"
 
 static std::mutex log_mutex;
 
 void usbdvd_log(const char *fmt, ...){
 
 #ifdef DEBUG
-	auto lk = std::scoped_lock(log_mutex);
-	char outbuff[1024];
-	va_list arglist;
-	va_start( arglist, fmt );
-	vprintf( fmt, arglist );
-	std::vsnprintf(outbuff, sizeof outbuff, fmt, arglist);
-	va_end( arglist );
-	fflush(stdout);
+    auto lk = std::scoped_lock(log_mutex);
+    char outbuff[1024];
+    va_list arglist;
+    va_start( arglist, fmt );
+    vprintf( fmt, arglist );
+    std::vsnprintf(outbuff, sizeof outbuff, fmt, arglist);
+    va_end( arglist );
+    fflush(stdout);
 #else
 
 
@@ -57,7 +66,7 @@ uint16_t byte2u16_be(uint8_t * ptr) {
 
 struct CueTrack {
     int number;
-	std::string title;
+    std::string title;
     std::string performer;
     uint8_t minutes;
     uint8_t seconds;
@@ -67,29 +76,29 @@ struct CueTrack {
 
 void lbaToMsf(uint32_t lba, uint8_t* minutes, uint8_t* seconds, uint8_t* frames) {
 
-	long totalFrames = lba;
+    long totalFrames = lba;
     *minutes = totalFrames / (75 * 60);
-	totalFrames %= (75 * 60);
+    totalFrames %= (75 * 60);
     *seconds = totalFrames / 75;
-	*frames = totalFrames % 75;
+    *frames = totalFrames % 75;
 }
 
 
 
 bool cuebin_to_TOC(std::string _cuepath,std::string _binpath,CDDVD_TOC * _toc){
 
-	std::vector<CueTrack> tracks;
-	FILE *binfp = fopen(_binpath.c_str(), "rb");
-	if(!binfp)return false;
-	fseek(binfp, 0L, SEEK_END);
-	size_t sz = ftell(binfp);
-	fseek(binfp, 0L, SEEK_SET);
-	fclose(binfp);
+    std::vector<CueTrack> tracks;
+    FILE *binfp = fopen(_binpath.c_str(), "rb");
+    if(!binfp)return false;
+    fseek(binfp, 0L, SEEK_END);
+    size_t sz = ftell(binfp);
+    fseek(binfp, 0L, SEEK_SET);
+    fclose(binfp);
 
-	FILE* file = fopen(_cuepath.c_str(), "r");
+    FILE* file = fopen(_cuepath.c_str(), "r");
         if (!file) {
             printf("Impossibile aprire il file %s\r\n",_cuepath.c_str());
-			return false;
+            return false;
         }
 
 
@@ -181,23 +190,23 @@ bool cuebin_to_TOC(std::string _cuepath,std::string _binpath,CDDVD_TOC * _toc){
         if (inTrack) {
             tracks.push_back(currentTrack);
         }
-		fclose(file);
-		CueTrack leadoutTrack;
-		leadoutTrack.number = 0xaa;
-		lbaToMsf(sz/2352,&leadoutTrack.minutes,&leadoutTrack.seconds,&leadoutTrack.frames);
+        fclose(file);
+        CueTrack leadoutTrack;
+        leadoutTrack.number = 0xaa;
+        lbaToMsf(sz/2352,&leadoutTrack.minutes,&leadoutTrack.seconds,&leadoutTrack.frames);
         tracks.push_back(leadoutTrack);
 
 
-		_toc->hdr.first_track = 1;
-		_toc->hdr.last_track = tracks.size()-1;
-		for(unsigned int i=0;i<tracks.size();i++){
-			_toc->tracks[i].tracktype = 0;
-			_toc->tracks[i].TNO = tracks[i].number;
-			_toc->tracks[i].MIN = tracks[i].minutes;
-			_toc->tracks[i].SEC = tracks[i].seconds;
-			_toc->tracks[i].FRAME = tracks[i].frames + 150;
+        _toc->hdr.first_track = 1;
+        _toc->hdr.last_track = tracks.size()-1;
+        for(unsigned int i=0;i<tracks.size();i++){
+            _toc->tracks[i].tracktype = 0;
+            _toc->tracks[i].TNO = tracks[i].number;
+            _toc->tracks[i].MIN = tracks[i].minutes;
+            _toc->tracks[i].SEC = tracks[i].seconds;
+            _toc->tracks[i].FRAME = tracks[i].frames + 150;
 
-		}
+        }
 
 
         return true;
@@ -225,4 +234,54 @@ std::string trim_right(const std::string& str)
 std::string trim(const std::string& str)
 {
   return trim_left(trim_right(str));
+}
+
+std::string usbdvdutils_joinPath(const std::string& base, const std::string& sub) {
+    std::string result = base;
+    
+    // Rimuovi il separatore finale se presente
+    if (!result.empty() && result.back() == '/') {
+        result.pop_back();
+    }
+    
+    // Aggiungi il separatore e la sottodirectory
+    result += "/";
+    result += sub;
+    
+    return result;
+}
+
+bool usbdvdutils_pathExists(const std::string& path) {
+   return (access(path.c_str(), F_OK) == 0);
+}
+
+bool usbdvdutils_isDirectory(const std::string& path) {
+    struct stat statbuf;
+    if (stat(path.c_str(), &statbuf) != 0) {
+        return false;
+    }
+    return S_ISDIR(statbuf.st_mode);
+}
+
+std::string create_dvd_hash_id(uint8_t vol_id[32], uint8_t creation_date[17]) {
+    unsigned char combined[49]; 
+    unsigned char hash[16]; 
+    
+    memcpy(combined, vol_id, 32);
+    memcpy(combined + 32, creation_date, 17);
+    
+    mbedtls_md5_context ctx;
+    mbedtls_md5_init(&ctx);
+    mbedtls_md5_starts(&ctx);
+    mbedtls_md5_update(&ctx, combined, 49);
+    mbedtls_md5_finish(&ctx, hash);
+    mbedtls_md5_free(&ctx);
+    
+    // Converti in stringa hex
+    std::stringstream ss;
+    for(int i = 0; i < 16; i++) {
+        ss << std::hex << std::setfill('0') << std::setw(2) << (int)hash[i];
+    }
+    
+    return ss.str();
 }

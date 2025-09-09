@@ -166,8 +166,8 @@ typedef struct {
 } __attribute__((packed)) CSW;
 
 typedef struct{
-	uint8_t size[4];
-	uint8_t blocksize[4];
+    uint8_t size[4];
+    uint8_t blocksize[4];
 } __attribute__((packed)) disccapacity_struct;
 
 
@@ -200,62 +200,79 @@ typedef struct {
     uint16_t data_length;      //    always 0x0006
     uint8_t  reserved[2];
     
-	uint8_t  CSS;
-	uint8_t  region_info;
-	
+    uint8_t  CSS;
+    uint8_t  region_info;
+    
 } __attribute__((packed)) dvd_copyright_info_t;
 
 typedef struct{
-	uint16_t datalen;
-	u_int8_t reserved[5];
-	u_int8_t agid;
-	
+    uint16_t datalen;
+    u_int8_t reserved[5];
+    u_int8_t agid;
+    
 
 }__attribute__((packed)) agid_struct;
 
 
 typedef struct 
 {
-	u_int8_t data_len[2];
-	u_int8_t reserved0[2];
-	u_int8_t challenge_key[10];
-	u_int8_t reserved1[2];
-}key_data_challenge_struct;
+    u_int8_t data_len[2];
+    u_int8_t reserved0[2];
+    u_int8_t key[5];
+    u_int8_t reserved[3];
+}css_chalkey_struct;
+
+typedef struct 
+{
+    u_int8_t data_len[2];
+    u_int8_t reserved0[2];
+    u_int8_t key[10];
+    u_int8_t reserved[2];
+}css_chal2_struct;
 
 
 class CUSBSCSI{
 public:
-	CUSBSCSI(CSWITCH_USB * _usb_ctx);
-	~CUSBSCSI();
-	
-	int UsbDvdSendInquiry(uint8_t lun,uint16_t allocation_length, void *buf);
-	int UsbDvdSendTOC(uint8_t lun,  void **buf, int *bufsize);
-	int UsbDvdReadCD_Audio(uint8_t lun,uint32_t read_lba,uint16_t numsec,uint8_t *data);
-	int UsbDvdReadCD_Data(uint8_t lun,uint32_t read_lba,uint16_t numsec,uint8_t *data);
-	int USBScsiInit();
-	void USBScsi_Free();
-	int UsbDvdSetSpeed(uint8_t lun);
-	int UsbDvdDiscInfo(uint8_t lun,void *buf);
-	int UsbDvdUnitReady(uint8_t lun);
-	int UsbDvdReadAhead(uint8_t lun,uint32_t read_lba,uint16_t numsec);
-	int UsbDvdSense(uint8_t lun,uint16_t allocation_length, ScsiRequestSenseDataFixedFormat *sense_data);
-	int UsbDvdPreventMediumRemoval(uint8_t lun,uint32_t prevent);
-	int UsbDvdGetConfig(uint8_t lun,uint8_t *buf);
-	int UsbDvdGetCapacity(uint8_t lun,uint8_t *buf);
-	int UsbDvdReadDVDStructure(uint8_t lun,uint8_t _format,uint16_t allocation_length, void *buf);
-	int UsbDvdGetDiscKey(uint8_t lun,uint8_t *buf,uint8_t _agid);
+    CUSBSCSI(CSWITCH_USB * _usb_ctx);
+    ~CUSBSCSI();
+    
+    int UsbDvdSendInquiry(uint8_t lun,uint16_t allocation_length, void *buf);
+    int UsbDvdSendTOC(uint8_t lun,  void **buf, int *bufsize);
+    int UsbDvdReadCD_Audio(uint8_t lun,uint32_t read_lba,uint16_t numsec,uint8_t *data);
+    int UsbDvdReadCD_Data(uint8_t lun,uint32_t read_lba,uint16_t numsec,uint8_t *data);
+    int USBScsiInit();
+    void USBScsi_Free();
+    int UsbDvdSetSpeed(uint8_t lun);
+    int UsbDvdDiscInfo(uint8_t lun,void *buf);
+    int UsbDvdUnitReady(uint8_t lun);
+    int UsbDvdReadAhead(uint8_t lun,uint32_t read_lba,uint16_t numsec);
+    int UsbDvdSense(uint8_t lun,uint16_t allocation_length, ScsiRequestSenseDataFixedFormat *sense_data);
+    int UsbDvdPreventMediumRemoval(uint8_t lun,uint32_t prevent);
+    int UsbDvdGetConfig(uint8_t lun,uint8_t *buf);
+    int UsbDvdGetCapacity(uint8_t lun,uint8_t *buf);
+    int UsbDvdReadDVDStructure(uint8_t lun,uint8_t _format,uint16_t allocation_length, void *buf);
+    int UsbDvdGetDiscKey(uint8_t lun,uint8_t _agi,uint8_t *buf);
     int UsbDvdGetAGID(uint8_t lun,uint8_t *buf);
-	int UsbDvdSendPlayerKey(uint8_t lun,uint8_t _agid,uint8_t * _playerkey);
-	int UsbDvdInvalidateAGID(uint8_t lun,uint8_t _agid);
-	int UsbDvdGetChallenge(uint8_t lun,uint8_t _agid,uint8_t *buf);
-	int UsbDvd_Eject(uint8_t lun);
+    int UsbDvdSendPlayerKey(uint8_t lun,uint8_t _agid,uint8_t * _playerkey);
+    int UsbDvdInvalidateAGID(uint8_t lun,uint8_t _agid);
+    int UsbDvdReportChallenge(uint8_t lun,uint8_t _agid,uint8_t *buf);
+    int ReportKey1(uint8_t lun,uint8_t _agid,uint8_t *buf);
+    int SendKey2(uint8_t lun,uint8_t _agid,uint8_t *_key2);
+    int UsbDvd_Eject(uint8_t lun);
+    
+    int GetASF(uint8_t lun,uint8_t *buf);
 
-	int send_scsi_command(CBW *cbw,bool receive,void *buf);
-	
+    int UsbDvdSendChallenge(uint8_t lun,uint8_t* challenge_seed,uint8_t _agid);
+    int CrackTitleKey( int i_pos, int i_len,uint8_t * p_titlekey );
+    
+    int send_scsi_command(CBW *cbw,bool receive,void *buf);
+    
+    int GetBusKey();
+    
 private:
-	CSWITCH_USB *usb_ctx;
-	std::mutex usb_mutex;
-	
+    CSWITCH_USB *usb_ctx;
+    std::mutex usb_mutex;
+    
 };
 
 

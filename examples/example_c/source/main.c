@@ -72,19 +72,7 @@ void print_drive_info(usbdvd_obj* test,char * _path){
 		printf(CONSOLE_ESC(8;2H)CONSOLE_ESC(0m)"serial_number:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),usbdvdctx->drive.serial_number);
 		printf(CONSOLE_ESC(9;2H)CONSOLE_ESC(0m)"Disc Type:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),usbdvdctx->drive.disc_type);
 		int printoff = 0;
-		if(usbdvdctx->dvd_protection.CSS){
-			printf(CONSOLE_ESC(10;2H)CONSOLE_ESC(1m)"Disc CSS Encrypted\r\n"CONSOLE_ESC(0m));
-			int myregions[8];
-			int rcnt = getDvdRegion(usbdvdctx->dvd_protection.regions,myregions);
-			printf(CONSOLE_ESC(11;2H)CONSOLE_ESC(0m)"Disc Region: "CONSOLE_ESC(0m));
-			for(int i=0;i<rcnt;i++){
-				printf("%d ",myregions[i]);
-			}
-			printf("\r\n");
-			
-		}
 		
-	
 		// Check if a supported filesystem was mounted
 		if(usbdvdctx->fs.mounted && strcmp(_path,"") != 0){
 			
@@ -112,9 +100,33 @@ void print_drive_info(usbdvd_obj* test,char * _path){
 			printf(CONSOLE_ESC(12;2H)CONSOLE_ESC(0m)"Volume ID: %s %s"CONSOLE_ESC(0m),CONSOLE_ESC(1m),usbdvdctx->fs.volid);
 			printf(CONSOLE_ESC(13;2H)CONSOLE_ESC(0m)"Disc FS: %s %s"CONSOLE_ESC(0m),CONSOLE_ESC(1m),usbdvdctx->fs.disc_fstype);
 			printf(CONSOLE_ESC(14;2H)CONSOLE_ESC(0m)"Block Size: %s %u"CONSOLE_ESC(0m),CONSOLE_ESC(1m),usbdvdctx->fs.block_size);
+			if(usbdvdctx->dvd_protection.CSS){
+				printf(CONSOLE_ESC(15;2H)CONSOLE_ESC(1m)"Disc CSS Encrypted\r\n"CONSOLE_ESC(0m));
+				int myregions[8];
+				int rcnt = getDvdRegion(usbdvdctx->dvd_protection.regions,myregions);
+				printf(CONSOLE_ESC(16;2H)CONSOLE_ESC(0m)"Disc Regions: "CONSOLE_ESC(0m));
+				for(int i=0;i<rcnt;i++){
+					printf("%d ",myregions[i]);
+				}
+				printf("\r\n");
+				printf(CONSOLE_ESC(17;2H)CONSOLE_ESC(1m)"Enabled Transparent CSS Descramble\t"CONSOLE_ESC(0m)"Time taken for DECSS"CONSOLE_ESC(1m)" %.02f seconds\r\n"CONSOLE_ESC(0m),usbdvdctx->dvd_protection.decss_msecs/1000.0);
+				printf(CONSOLE_ESC(18;2H)CONSOLE_ESC(0m)"Entry in CSS cache"CONSOLE_ESC(1m)" %u\r\n"CONSOLE_ESC(0m),usbdvdctx->dvd_protection.cache_keys);
+                
+			}
+            
+            if(usbdvdctx->bluray_protection.AACS){
+                printf(CONSOLE_ESC(15;2H)CONSOLE_ESC(1m)"Disc AACS Encrypted\r\n"CONSOLE_ESC(0m));
+            }
+				
+            if(usbdvdctx->dvd_protection.CSS || usbdvdctx->bluray_protection.AACS){
+                printf(CONSOLE_ESC(19;2H)"File List: %s\n",path);
+				printf(CONSOLE_ESC(20;2H)"\n");
+            }else{
+				printf(CONSOLE_ESC(17;2H)"File List: %s\n",path);
+				printf(CONSOLE_ESC(18;2H)"\n");
+			}
 			
-			printf(CONSOLE_ESC(16;2H)"File List: %s\n",path);
-			printf(CONSOLE_ESC(17;2H)"\n");
+			
 			
 			// Standatd FS Directory Listing
 			
@@ -195,6 +207,9 @@ int main(int argc, const char* const* argv) {
 	appletLockExit();
 	romfsInit();
 	
+    //socketInitializeDefault();
+    //nxlinkStdio();
+    
 	consoleInit(NULL);
 	padConfigureInput(1, HidNpadStyleSet_NpadStandard);
 	
@@ -209,6 +224,7 @@ int main(int argc, const char* const* argv) {
 	//usbdvd_obj* test = usbdvd_initcuebin("/pathtofile.cue","/pathtofile.bin");
 	
 	// Retrive the drive struct ref
+    usbdvd_mountdisc(test);
 	usbdvd_struct *usbdvdctx = usbdvd_get_ctx(test);
 	
 	char openpath[2048];
