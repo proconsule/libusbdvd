@@ -18,8 +18,6 @@
 #include "usbdvd_udf.h"
 #include <switch.h>
 
-
-
 class SWITCH_UDFFS{
 public:
 	SWITCH_UDFFS(CUSBDVD_UDFFS* _ctx,std::string _name,std::string _mount_name);
@@ -46,7 +44,8 @@ public:
 	static int       udffs_open     (struct _reent *r, void *fileStruct, const char *path, int flags, int mode);
 	static int       udffs_close    (struct _reent *r, void *fd);
 	static ssize_t   udffs_read     (struct _reent *r, void *fd, char *ptr, size_t len);
-	static off_t     udffs_seek     (struct _reent *r, void *fd, off_t pos, int dir);
+	static ssize_t   udffs_write(struct _reent *r, void *fd, const char *ptr, size_t len);
+    static off_t     udffs_seek     (struct _reent *r, void *fd, off_t pos, int dir);
 	static int       udffs_fstat    (struct _reent *r, void *fd, struct stat *st);
 	static int       udffs_stat     (struct _reent *r, const char *file, struct stat *st);
 	static int       udffs_chdir    (struct _reent *r, const char *name);
@@ -71,15 +70,18 @@ private:
 
 	
 	struct SWITCH_UDFFSFile {
-		//iso9660_dirlist_struct filedesc;
-		int filelist_id;
+		int filelist_id = -1;
 		off_t offset = 0;
+        int file_ioctl = 0;
+        
+        
 	};
 
 	struct SWITCH_UDFFSDir {
 		
 		char dirpath[256] = "";
 		int dirnext_idx = 0;
+        uint32_t dir_idxs_count = 0;
 	};
 	
 	std::string cwd = "";
@@ -89,6 +91,9 @@ private:
 	
 protected:
 	devoptab_t devoptab = {};
+    
+    size_t file_ioctl_size = 0;
+    uint8_t * file_ioctl_buffer = NULL;
 	
 };
 

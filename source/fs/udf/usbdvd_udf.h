@@ -29,6 +29,24 @@ typedef struct{
     
 }sector_range_struct;
 
+
+
+typedef struct {
+    int file_idx;     
+    uint8_t *data;      
+    size_t size;         
+    bool is_loaded;     
+   
+} udf_small_cache_entry_t;
+
+typedef struct {
+    udf_small_cache_entry_t *entries;  
+    int num_entries;            
+    int capacity;         
+} udf_small_cache_t;
+
+
+
 class CUSBDVD_UDFFS: public CUSBDVD_DATADISC{
 public:
     CUSBDVD_UDFFS(std::string _filename);
@@ -51,7 +69,9 @@ public:
     
 
     int ReadExtents(std::vector<sector_range_struct> _seclist,uint32_t _len,uint8_t * buffer);
-    int UDFReadData(disc_dirlist_struct * _filedesc,uint32_t pos,uint32_t size,uint8_t * buf);
+    int UDFReadData(disc_dirlist_struct * _filedesc,size_t pos,size_t size,uint8_t * buf);
+
+    void Cache_UDF_Small_Media_Files();
 
     std::string SystemIdentifier;
     //std::string VolumeIdentifier;
@@ -60,6 +80,7 @@ public:
     
     //std::string udf_version_string = "";
     udf_lvd_struct disc_lvd;
+    uint32_t partitionlba = 0;
 
 private:
     
@@ -69,8 +90,13 @@ private:
     
     uint32_t metadata_partition_lba = 0;
     uint32_t metadata_fsd_offset = 0;
-    uint32_t partitionlba = 0;
+    
     bool udf15plus = false;
+    
+    udf_small_cache_t g_udf_small_cache = {NULL, 0, 0};
+    void cleanup_udf_small_cache();
+    int load_udf_small_by_index(int file_idx);
+    uint8_t* get_udf_small_data(int file_idx, size_t *size_out);
     
     
 };

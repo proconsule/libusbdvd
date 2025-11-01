@@ -122,7 +122,7 @@ off_t     SWITCH_ISO9660FS::iso9660fs_seek     (struct _reent *r, void *fd, off_
             offset = priv_file->offset;
             break;
         case SEEK_END:
-            offset = priv->currdirlist[priv_file->filelist_id].size;
+            offset = priv->ISO9660FS->disc_dirlist[priv_file->filelist_id].size;
             break;
     }
 

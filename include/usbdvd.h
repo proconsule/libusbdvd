@@ -8,7 +8,7 @@ extern "C" {
 
 #define LIBUSBDVD_VERSION_MAJOR    0
 #define LIBUSBDVD_VERSION_MINOR    1
-#define LIBUSBDVD_VERSION_MICRO    0
+#define LIBUSBDVD_VERSION_MICRO    1
 
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
@@ -58,6 +58,7 @@ typedef struct{
 typedef struct{
     bool fileimage;
     bool drive_found;
+    uint8_t subclass;
     char vendor_id[0x8+1];
     char product_id[0x10+1];
     char product_revision[0x4+1];
@@ -93,7 +94,8 @@ typedef struct{
 
 typedef struct usbdvd_obj usbdvd_obj;
 
-usbdvd_obj* usbdvd_init();
+usbdvd_obj* usbdvd_init(int _unfilter_subclass6);
+usbdvd_obj* usbdvd_init_verbose(int _unfilter_subclass6);
 usbdvd_obj* usbdvd_initimage(const char * _path);
 usbdvd_obj* usbdvd_initcuebin(const char * _cuepath,const char * _binpath);
 void usbdvd_destroy(usbdvd_obj* obj);
@@ -102,6 +104,9 @@ int usbdvd_mountdisc(usbdvd_obj* obj);
 usbdvd_struct * usbdvd_get_ctx(usbdvd_obj* obj);
 const char* usbdvd_version(void);
 void usbdvd_cache_ifo_files(usbdvd_obj* obj);
+int usbdvd_read_raw_sectors(void *handle, void *buf, int lba, int num_blocks);
+
+
 
 #ifdef __cplusplus
 }
@@ -123,10 +128,9 @@ class SWITCH_ISO9660FS;
 class CUSBDVD_UDFFS;
 class SWITCH_UDFFS;
 
-
 class CUSBDVD{
 public:
-    CUSBDVD();
+    CUSBDVD(bool unfilter_subclass6 = false,bool verboseinit = false);
     CUSBDVD(std::string _cuepath,std::string _binpath);
     CUSBDVD(std::string _isofilepath);
     ~CUSBDVD();
@@ -147,9 +151,13 @@ public:
     usbdvd_struct usbdvd_ctx;
     
     void Cache_IFO_Files();
+    void Cache_UDF_Small_Media_Files();
+    
+    int Read_Raw_Sectors(void *buf, int lba, int num_blocks);
     
     void Eject();
-    int MountDisc();
+    int MountDisc(bool verboseinit = false);
+ 
     
 private:
 

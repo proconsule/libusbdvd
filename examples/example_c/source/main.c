@@ -49,6 +49,8 @@ void unixToDate(time_t timestamp, char *result, size_t result_size) {
 uint32_t cursor_idx = 0;
 uint32_t currlist_len = 0;
 
+int sel_subclass = 0;
+
 typedef struct{
 	char currname[2048];
 	bool isdir;
@@ -66,6 +68,7 @@ void print_drive_info(usbdvd_obj* test,char * _path){
 	usbdvd_struct *usbdvdctx = usbdvd_get_ctx(test);
 	// Check if a drive is found or we are using a file image and print info
 	if(usbdvdctx->drive.drive_found || usbdvdctx->drive.fileimage){
+        printf(CONSOLE_ESC(4;2H)CONSOLE_ESC(0m)"drive subclass:%s 0x%02hhx\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),usbdvdctx->drive.subclass);
 		printf(CONSOLE_ESC(5;2H)CONSOLE_ESC(0m)"vendor_id:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),usbdvdctx->drive.vendor_id);
 		printf(CONSOLE_ESC(6;2H)CONSOLE_ESC(0m)"product_id:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),usbdvdctx->drive.product_id);
 		printf(CONSOLE_ESC(7;2H)CONSOLE_ESC(0m)"product_revision:%s %s\r\n"CONSOLE_ESC(0m),CONSOLE_ESC(1m),usbdvdctx->drive.product_revision);
@@ -185,22 +188,30 @@ void print_drive_info(usbdvd_obj* test,char * _path){
 			
 			printf(CONSOLE_ESC(40;25H)""CONSOLE_ESC(1m)"Y"CONSOLE_ESC(0m)": Eject Drive "CONSOLE_ESC(1m)"X"CONSOLE_ESC(0m)": Mount Drive\n");
 		}
-	}
+	}else{
+        printf(CONSOLE_ESC(5;25H)CONSOLE_ESC(0m)"NO USB DVD/BD DRIVE FOUND"CONSOLE_ESC(0m));
+		
+        printf(CONSOLE_ESC(6;2H)CONSOLE_ESC(1m)"No dvice found with both 0x02 and 0x06 subclass unfiltered"CONSOLE_ESC(0m));
+         
+    }
 	
 	
 }
 
 
 char* get_directory(const char *path) {
-    char *path_copy = strdup(path);  // Crea una copia
+    char *path_copy = strdup(path);  
     char *last_slash = strrchr(path_copy, '/');
     
     if (last_slash != NULL) {
-        *(last_slash) = '\0';  // Termina la stringa all'ultimo slash
+        *(last_slash) = '\0';  
     }
     
-    return path_copy;  // Ricorda di fare free() dopo l'uso
+    return path_copy;  
 }
+
+bool init_end = false;
+
 
 int main(int argc, const char* const* argv) {
 	
@@ -216,24 +227,42 @@ int main(int argc, const char* const* argv) {
 	PadState pad;
     padInitializeDefault(&pad);
 	
-	// Library init (it will find first compatible drive and mount proper fs
-	usbdvd_obj* test = usbdvd_init();
+	// Library init (it will find first compatible drive and mount proper fs)
+    // 0 means only 0x02 subclass 1 means 0x02 and 0x06 
+	usbdvd_obj* test = usbdvd_init_verbose(1);
+    // Retrive the drive struct ref
+    usbdvd_struct *usbdvdctx = usbdvd_get_ctx(test);
+	
 	// For ISO file mount use
 	// usbdvd_obj* test = usbdvd_initimage("/pathtoiso.iso");
 	// For CUE/BIN mount use
 	//usbdvd_obj* test = usbdvd_initcuebin("/pathtofile.cue","/pathtofile.bin");
 	
-	// Retrive the drive struct ref
-    usbdvd_mountdisc(test);
-	usbdvd_struct *usbdvdctx = usbdvd_get_ctx(test);
 	
+    
 	char openpath[2048];
 	char basepath[2048];
 	memset(openpath,0,sizeof(openpath));
-	if(usbdvdctx->fs.mounted)sprintf(openpath,"%s/",usbdvdctx->fs.mountpoint);
-	if(usbdvdctx->fs.mounted)sprintf(basepath,"%s/",usbdvdctx->fs.mountpoint);
-	print_drive_info(test,openpath);
+    memset(basepath,0,sizeof(basepath));
+    
+    
+    /*
+    if(usbdvdctx->drive.drive_found){
+        usbdvd_mountdisc(test);
+        
+        memset(openpath,0,sizeof(openpath));
+        if(usbdvdctx->fs.mounted)sprintf(openpath,"%s/",usbdvdctx->fs.mountpoint);
+        if(usbdvdctx->fs.mounted)sprintf(basepath,"%s/",usbdvdctx->fs.mountpoint);
+    
+    }
+    */
+    
+    printf("PRESS B BUTTON TO CONTINUE\n");
+    
+    //print_drive_info(test,openpath);
 	
+    
+    
 	while(appletMainLoop()){
 		 padUpdate(&pad);
 
@@ -243,40 +272,47 @@ int main(int argc, const char* const* argv) {
         if (kDown & HidNpadButton_Plus) break; // break in order to return to hbmenu
 
 		if (kDown & HidNpadButton_Y) {
-			svcSleepThread(10000000ULL);
-			if(usbdvdctx->drive.drive_found){
-				usbdvd_eject(test);
-				memset(openpath,0,sizeof(openpath));
-				print_drive_info(test,openpath);
-			}
+            if(init_end){
+                svcSleepThread(10000000ULL);
+                if(usbdvdctx->drive.drive_found){
+                    usbdvd_eject(test);
+                    memset(openpath,0,sizeof(openpath));
+                    print_drive_info(test,openpath);
+                }
+            }
 		}
 		
 		if (kDown & HidNpadButton_X) {
-			svcSleepThread(10000000ULL);
-			if(usbdvdctx->drive.drive_found){
-				usbdvd_mountdisc(test);
-				memset(openpath,0,sizeof(openpath));
-				if(usbdvdctx->fs.mounted)sprintf(openpath,"%s/",usbdvdctx->fs.mountpoint);
-				if(usbdvdctx->fs.mounted)sprintf(basepath,"%s/",usbdvdctx->fs.mountpoint);
-				print_drive_info(test,openpath);
-			}
+            if(init_end){
+                svcSleepThread(10000000ULL);
+                if(usbdvdctx->drive.drive_found){
+                    usbdvd_mountdisc(test);
+                    memset(openpath,0,sizeof(openpath));
+                    if(usbdvdctx->fs.mounted)sprintf(openpath,"%s/",usbdvdctx->fs.mountpoint);
+                    if(usbdvdctx->fs.mounted)sprintf(basepath,"%s/",usbdvdctx->fs.mountpoint);
+                    print_drive_info(test,openpath);
+                }
+            }
 		}
 		
 		if (kDown & HidNpadButton_A) {
-			svcSleepThread(10000000ULL);
-			if(!currentry.isdir)continue;
-			//memset(openpath,0,sizeof(openpath));
-			if(strcmp(openpath,basepath) == 0){
-				if(usbdvdctx->fs.mounted)sprintf(openpath,"%s%s",openpath,currentry.currname);
-			}else{
-				if(usbdvdctx->fs.mounted)sprintf(openpath,"%s/%s",openpath,currentry.currname);
-			}
-			
-			cursor_idx=0;
-			print_drive_info(test,openpath);
+            if(init_end){
+                svcSleepThread(10000000ULL);
+                if(!currentry.isdir)continue;
+                //memset(openpath,0,sizeof(openpath));
+                if(strcmp(openpath,basepath) == 0){
+                    if(usbdvdctx->fs.mounted)sprintf(openpath,"%s%s",openpath,currentry.currname);
+                }else{
+                    if(usbdvdctx->fs.mounted)sprintf(openpath,"%s/%s",openpath,currentry.currname);
+                }
+                
+                cursor_idx=0;
+                print_drive_info(test,openpath);
+            }
 		}
 		
 		if (kDown & HidNpadButton_B) {
+            if(init_end==false)init_end=true;
 			cursor_idx=0;
 			if(strcmp(openpath,basepath) == 0){
 				
@@ -294,14 +330,16 @@ int main(int argc, const char* const* argv) {
 		}
 		
 		if (kDown & HidNpadButton_Up) {
-			svcSleepThread(10000000ULL);
-			if(cursor_idx==0){
-				cursor_idx = currlist_len-1;
-			}else{
-				cursor_idx-=1;
-			}
-			
-			print_drive_info(test,openpath);
+            if(init_end){
+                svcSleepThread(10000000ULL);
+                if(cursor_idx==0){
+                    cursor_idx = currlist_len-1;
+                }else{
+                    cursor_idx-=1;
+                }
+                
+                print_drive_info(test,openpath);
+            }
 		}
 		
 		if (kDown & HidNpadButton_Down) {
@@ -309,6 +347,10 @@ int main(int argc, const char* const* argv) {
 			cursor_idx+=1;
 			if(cursor_idx>=currlist_len)cursor_idx=0;
 			print_drive_info(test,openpath);
+		}
+        
+        if (kDown & HidNpadButton_Minus) {
+            
 		}
 	
         consoleUpdate(NULL);
@@ -318,11 +360,13 @@ int main(int argc, const char* const* argv) {
 	
 	
 	// Destory and cleanup the library
-	usbdvd_destroy(test);
-	consoleExit(NULL);
+    if(test){
+        usbdvd_destroy(test);
+	}
+    consoleExit(NULL);
 	romfsExit();
 	appletUnlockExit();
-	
+	//socketExit();
 	
 	return 0;
 }

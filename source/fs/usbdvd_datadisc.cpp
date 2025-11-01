@@ -86,32 +86,51 @@ int CUSBDVD_DATADISC::FindTitleKey_IDX(std::string _fullpath){
     return -1;
 }
 
-int CUSBDVD_DATADISC::ReadSector(uint32_t sector,uint8_t * buffer){
+int CUSBDVD_DATADISC::ReadSector(uint32_t sector,uint8_t * buffer,bool streaming){
     
     if(isofile){
         isofile_filesectorread(sector,buffer);
         return 0;
     }else{
-        return usb_scsi_ctx->UsbDvdReadCD_Data(0,sector,1,buffer);
+        return usb_scsi_ctx->UsbDvd_Read12(0,sector,1,buffer,streaming);
+     
     }
     return -1;
 }
 
 int CUSBDVD_DATADISC::ReadNumSectors(uint32_t startsector,uint16_t numblocks,uint8_t * buffer){
     
-    if(isofile){
-        //isofile_filesectorread(sector,buffer);
-        return 0;
-    }else{
-        return usb_scsi_ctx->UsbDvdReadCD_Data(0,startsector,numblocks,buffer);
+    
+    uint32_t numsectors = numblocks;
+    uint32_t buffosff = 0;
+    for(uint32_t i=0;i<numsectors;i++){
+        size_t toread  = DATA_SECTOR_SIZE;
+        ReadSector(startsector+i,drive_readbuffer.read_buffer);
+        drive_readbuffer.read_sector = startsector+i;
+        
+        memcpy(buffer+buffosff,drive_readbuffer.read_buffer,toread);
+        buffosff+=toread;
+        
     }
+    //usb_scsi_ctx->UsbDvdReadAhead(0,lastsector,numblocks);
     return -1;
 }
 
 
+int CUSBDVD_DATADISC::ReadNumSectors2(uint32_t startsector,uint32_t numblocks,uint8_t * buffer,bool streaming){
+    
+    
+    usb_scsi_ctx->UsbDvd_Read12(0,startsector,numblocks,buffer,streaming);
+    uint8_t *lastbuffer = buffer +((numblocks-1)*DATA_SECTOR_SIZE);
+    memcpy(drive_readbuffer.read_buffer,lastbuffer,DATA_SECTOR_SIZE);
+    drive_readbuffer.read_sector =  startsector+numblocks-1;
+    //printf("READBUFF SEC:%u %u %u\r\n",startsector,drive_readbuffer.read_sector,numblocks);
+    return 0;
+}
+
 int CUSBDVD_DATADISC::isofile_filesectorread(uint32_t sector,uint8_t *buffer){
-    fseek(isofp,sector*DATA_SECOTR_SIZE,SEEK_SET);
-    fread(buffer, sizeof(uint8_t), DATA_SECOTR_SIZE,isofp);
+    fseek(isofp,sector*DATA_SECTOR_SIZE,SEEK_SET);
+    fread(buffer, sizeof(uint8_t), DATA_SECTOR_SIZE,isofp);
     return 0;
 }
 
@@ -125,9 +144,11 @@ int CUSBDVD_DATADISC::ReadData(disc_dirlist_struct * _filedesc,uint32_t pos,uint
         return 0;
     }
     
-    size_t firstsector =  _filedesc->lba + (pos/DATA_SECOTR_SIZE);
-    size_t offset_firstsector = pos%DATA_SECOTR_SIZE;
-    size_t lastsector = firstsector + (size/DATA_SECOTR_SIZE);
+    //auto lk = std::scoped_lock(read_mutex);
+    
+    size_t firstsector =  _filedesc->lba + (pos/DATA_SECTOR_SIZE);
+    size_t offset_firstsector = pos%DATA_SECTOR_SIZE;
+    size_t lastsector = firstsector + (size/DATA_SECTOR_SIZE);
     
     size_t remread = size;
     size_t buffosff = 0;
@@ -136,9 +157,9 @@ int CUSBDVD_DATADISC::ReadData(disc_dirlist_struct * _filedesc,uint32_t pos,uint
         size_t toread;
         size_t offsetinblock = (numblock == firstsector) ? offset_firstsector : 0;
         if(numblock == firstsector){
-            toread = std::min(remread,(size_t)DATA_SECOTR_SIZE-offset_firstsector);
+            toread = std::min(remread,(size_t)DATA_SECTOR_SIZE-offset_firstsector);
         }else{
-            toread = std::min(remread,(size_t)DATA_SECOTR_SIZE);
+            toread = std::min(remread,(size_t)DATA_SECTOR_SIZE);
         }
         
         if(numblock != drive_readbuffer.read_sector){
@@ -157,7 +178,7 @@ int CUSBDVD_DATADISC::ReadData(disc_dirlist_struct * _filedesc,uint32_t pos,uint
         
         
     }
-    //usb_scsi_ctx->UsbDvdReadAhead(0,lastsector,(size-1/DATA_SECOTR_SIZE));
+    //usb_scsi_ctx->UsbDvdReadAhead(0,lastsector,(size-1/DATA_SECTOR_SIZE));
     return 0;
     
 
@@ -166,17 +187,17 @@ int CUSBDVD_DATADISC::ReadData(disc_dirlist_struct * _filedesc,uint32_t pos,uint
 int CUSBDVD_DATADISC::ReadSectorsLen(uint32_t startsector,uint32_t _len,uint8_t * buffer){
     
     
-    //size_t lastsector = startsector + (_len/DATA_SECOTR_SIZE)+1;
-    //size_t interbufferlen = 1+(lastsector-startsector)*DATA_SECOTR_SIZE;
+    //size_t lastsector = startsector + (_len/DATA_SECTOR_SIZE)+1;
+    //size_t interbufferlen = 1+(lastsector-startsector)*DATA_SECTOR_SIZE;
     //uint8_t interbuf[interbufferlen];
     
     //uint32_t numreq = ((lastsector-startsector)/MAX_READ_SECTORS)+1;
     //uint32_t currsecnums = lastsector-startsector;
-    uint32_t numsectors = (_len/DATA_SECOTR_SIZE)+1;
+    uint32_t numsectors = (_len/DATA_SECTOR_SIZE)+1;
     uint32_t buffosff = 0;
     size_t remread = _len;
     for(uint32_t i=0;i<numsectors;i++){
-        size_t toread  = std::min(remread,(size_t)DATA_SECOTR_SIZE);
+        size_t toread  = std::min(remread,(size_t)DATA_SECTOR_SIZE);
         ReadSector(startsector+i,drive_readbuffer.read_buffer);
         drive_readbuffer.read_sector = startsector+i;
         

@@ -9,7 +9,7 @@
 #include "usbdvd_scsi.h"
 #include "usbdvd_common.h"
 
-#define DATA_SECOTR_SIZE 2048
+#define DATA_SECTOR_SIZE 2048
 
 typedef struct {
     int file_idx;            // Indice nel vector dei file
@@ -26,8 +26,8 @@ typedef struct {
 } ifo_cache_t;
 
 typedef struct{
-    uint32_t length;  
-    uint32_t location;
+    uint64_t length;  
+    uint64_t location;
     uint16_t partition_reference;  
 }udf_extent_struct;
 
@@ -35,6 +35,7 @@ typedef struct{
     std::string name;
     bool isdir;
     bool cached = false;
+    bool streaming = false;
     int idx;
     uint64_t size;
     uint64_t lba;
@@ -57,7 +58,7 @@ typedef struct{
 
 typedef struct{
     uint8_t read_buffer[2048];
-    uint8_t read_sector = 0;
+    uint32_t read_sector = 0;
 }drive_readbuf_struct;
 
 typedef struct{
@@ -76,8 +77,10 @@ public:
     int isofile_filesectorread(uint32_t sector,uint8_t *buffer);
     uint32_t GetFileSize(std::string _filename);
     
-    int ReadSector(uint32_t sector,uint8_t * buffer);
+    int ReadSector(uint32_t sector,uint8_t * buffer,bool streaming = false);
     int ReadNumSectors(uint32_t startsector,uint16_t numblocks,uint8_t * buffer);
+    int ReadNumSectors2(uint32_t startsector,uint32_t numblocks,uint8_t * buffer,bool streaming = false);
+ 
     int ReadSectorsLen(uint32_t startsector,uint32_t _len,uint8_t * buffer);
     int ReadData(disc_dirlist_struct * _filedesc,uint32_t pos,uint32_t size,uint8_t * buf);
     int GetFileDesc(std::string _filename,disc_dirlist_struct & _filedesc);

@@ -3,7 +3,7 @@
 #include <time.h>
 #include <dirent.h>
 
-#define DATA_SECOTR_SIZE 2048
+#define DATA_SECTOR_SIZE 2048
 
 #include <cstring>
 #include <iostream>
@@ -262,7 +262,7 @@ time_t rd_record_to_unixtime(rd_record_time_struct * _date){
 
 CUSBDVD_ISO9660FS::CUSBDVD_ISO9660FS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba,uint32_t _endlba) : CUSBDVD_DATADISC(_usb_scsi_ctx,_startlba,_endlba){
     
-    uint8_t iso9660_rootsector[DATA_SECOTR_SIZE];
+    uint8_t iso9660_rootsector[DATA_SECTOR_SIZE];
     
     ReadSector(16,iso9660_rootsector);
     primary_vd_struct primary_vd = {0};
@@ -272,12 +272,12 @@ CUSBDVD_ISO9660FS::CUSBDVD_ISO9660FS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba
     SystemIdentifier = (const char *)primary_vd.sys_id;
     VolumeIdentifier = std::string((const char *)primary_vd.vol_id,sizeof(primary_vd.vol_id)-1);
     //VolumeIdentifier = (const char *)primary_vd.vol_id;
-    VolumeSpace = byte2u32_le(primary_vd.vd_space_le)*DATA_SECOTR_SIZE;
+    VolumeSpace = byte2u32_le(primary_vd.vd_space_le)*DATA_SECTOR_SIZE;
     VolumeSectors =  byte2u32_le(primary_vd.vd_space_le);
     rd_record_struct* root_record = reinterpret_cast<rd_record_struct*>(&primary_vd.rd_record);
     uint32_t root_sector = byte2u32_le(root_record->root_lba_le);
         
-    uint8_t iso9660_rootjolietsector[DATA_SECOTR_SIZE];
+    uint8_t iso9660_rootjolietsector[DATA_SECTOR_SIZE];
     
     disc_hash = create_dvd_hash_id(primary_vd.vol_id, primary_vd.vol_creation_date);
     usbdvd_log("DISC HASH %s\r\n",disc_hash.c_str());
@@ -319,7 +319,7 @@ CUSBDVD_ISO9660FS::CUSBDVD_ISO9660FS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba
 
 CUSBDVD_ISO9660FS::CUSBDVD_ISO9660FS(std::string _filename) : CUSBDVD_DATADISC(_filename){
     
-    uint8_t iso9660_rootsector[DATA_SECOTR_SIZE];
+    uint8_t iso9660_rootsector[DATA_SECTOR_SIZE];
     
     ReadSector(16,iso9660_rootsector);
     primary_vd_struct primary_vd = {0};
@@ -330,12 +330,12 @@ CUSBDVD_ISO9660FS::CUSBDVD_ISO9660FS(std::string _filename) : CUSBDVD_DATADISC(_
     SystemIdentifier = (const char *)primary_vd.sys_id;
     VolumeIdentifier = std::string((const char *)primary_vd.vol_id,sizeof(primary_vd.vol_id)-1);
     VolumeIdentifier.erase(std::remove(VolumeIdentifier.begin(), VolumeIdentifier.end(), '\0'), VolumeIdentifier.end());
-    VolumeSpace = byte2u32_le(primary_vd.vd_space_le)*DATA_SECOTR_SIZE;
+    VolumeSpace = byte2u32_le(primary_vd.vd_space_le)*DATA_SECTOR_SIZE;
     VolumeSectors =  byte2u32_le(primary_vd.vd_space_le);
     rd_record_struct* root_record = reinterpret_cast<rd_record_struct*>(&primary_vd.rd_record);
     uint32_t root_sector = byte2u32_le(root_record->root_lba_le);
         
-    uint8_t iso9660_rootjolietsector[DATA_SECOTR_SIZE];
+    uint8_t iso9660_rootjolietsector[DATA_SECTOR_SIZE];
        
     ReadSector(17,iso9660_rootjolietsector);
     primary_vd_struct testjoilet = {0};

@@ -35,6 +35,23 @@ inline bool endsWithIfo(const std::string& filename) noexcept {
            (filename[filename.size()-1] | 32) == 'o';
 }
 
+inline bool endsWithClpi(const std::string& filename) noexcept {
+    return filename.size() >= 5 &&
+           (filename[filename.size()-5] | 32) == '.' &&  // No conversion needed for '.'
+           (filename[filename.size()-4] | 32) == 'c' &&  
+           (filename[filename.size()-3] | 32) == 'l' &&
+           (filename[filename.size()-2] | 32) == 'p' &&
+           (filename[filename.size()-1] | 32) == 'i';
+}
+inline bool endsWithMpls(const std::string& filename) noexcept {
+    return filename.size() >= 5 &&
+           (filename[filename.size()-5] | 32) == '.' &&  // No conversion needed for '.'
+           (filename[filename.size()-4] | 32) == 'm' &&  
+           (filename[filename.size()-3] | 32) == 'p' &&
+           (filename[filename.size()-2] | 32) == 'l' &&
+           (filename[filename.size()-1] | 32) == 's';
+}
+
 bool usbdvdutils_pathExists(const std::string& path);
 bool usbdvdutils_isDirectory(const std::string& path);
 std::string usbdvdutils_joinPath(const std::string& base, const std::string& sub);
