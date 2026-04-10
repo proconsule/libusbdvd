@@ -27,20 +27,6 @@ enum usb_request_bot {
     USB_REQUEST_BOT_RESET       = 0xFF
 };
 
-enum usb_request_recipient {
-    USB_RECIPIENT_DEVICE    = 0x00,
-    USB_RECIPIENT_INTERFACE = 0x01,
-    USB_RECIPIENT_ENDPOINT  = 0x02,
-    USB_RECIPIENT_OTHER     = 0x03,
-};
-
-enum usb_request_type {
-    USB_REQUEST_TYPE_STANDARD = (0x00 << 5),
-    USB_REQUEST_TYPE_CLASS    = (0x01 << 5),
-    USB_REQUEST_TYPE_VENDOR   = (0x02 << 5),
-    USB_REQUEST_TYPE_RESERVED = (0x03 << 5),
-};
-
 CSWITCH_USB::~CSWITCH_USB(){
     
     usbHsEpClose(&endpoint_out);
