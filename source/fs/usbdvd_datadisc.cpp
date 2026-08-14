@@ -27,6 +27,9 @@ CUSBDVD_DATADISC::CUSBDVD_DATADISC(std::string _filename){
     
     filename = _filename;
     isofp = fopen(filename.c_str(),"rb");
+	if(isofp == NULL){
+		usbdvd_log("Unable to open image: %s\r\n", filename.c_str());
+	}
     isofile = true;
     
 }
@@ -89,8 +92,7 @@ int CUSBDVD_DATADISC::FindTitleKey_IDX(std::string _fullpath){
 int CUSBDVD_DATADISC::ReadSector(uint32_t sector,uint8_t * buffer,bool streaming){
     
     if(isofile){
-        isofile_filesectorread(sector,buffer);
-        return 0;
+        return isofile_filesectorread(sector,buffer);	
     }else{
         return usb_scsi_ctx->UsbDvd_Read12(0,sector,1,buffer,streaming);
      
@@ -130,7 +132,14 @@ int CUSBDVD_DATADISC::ReadNumSectors2(uint32_t startsector,uint32_t numblocks,ui
 
 int CUSBDVD_DATADISC::isofile_filesectorread(uint32_t sector,uint8_t *buffer){
     fseek(isofp,sector*DATA_SECTOR_SIZE,SEEK_SET);
-    fread(buffer, sizeof(uint8_t), DATA_SECTOR_SIZE,isofp);
+    if(isofp == NULL) return -1;
+
+	fseek(isofp,(long)sector*DATA_SECTOR_SIZE,SEEK_SET);
+	size_t got = fread(buffer, 1, DATA_SECTOR_SIZE, isofp);
+	if(got != DATA_SECTOR_SIZE){
+		if(got < DATA_SECTOR_SIZE) memset(buffer+got, 0, DATA_SECTOR_SIZE-got);
+		return -1;
+	}
     return 0;
 }
 
