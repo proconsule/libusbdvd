@@ -85,27 +85,35 @@ int  SWITCH_ISO9660FS::iso9660fs_close    (struct _reent *r, void *fd){
     return 0;
 }
 
-ssize_t   SWITCH_ISO9660FS::iso9660fs_read     (struct _reent *r, void *fd, char *ptr, size_t len){
+ssize_t SWITCH_ISO9660FS::iso9660fs_read(struct _reent *r, void *fd, char *ptr, size_t len){
     auto *priv      = static_cast<SWITCH_ISO9660FS     *>(r->deviceData);
     auto *priv_file = static_cast<SWITCH_ISO9660FSFile *>(fd);
 
     auto lk = std::scoped_lock(priv->session_mutex);
-    
+
     disc_dirlist_struct * _filedesc = priv->ISO9660FS->GetFileDescFromIDX(priv_file->filelist_id);
+    if(_filedesc == NULL){
+        __errno_r(r) = EBADF;
+        return -1;
+    }
+
+    if((uint64_t)priv_file->offset >= _filedesc->size){
+        return 0;
+    }
+    uint64_t remaining = _filedesc->size - (uint64_t)priv_file->offset;
+    size_t toread = (len < remaining) ? len : (size_t)remaining;
+
     if(priv->ISO9660FS->DVD_CSS){
         if(priv->ISO9660FS->currenttitlekey_idx != priv_file->csskey_idx){
             priv->ISO9660FS->usb_scsi_ctx->GetBusKey();
         }
         priv->ISO9660FS->currenttitlekey_idx = priv_file->csskey_idx;
     }
-    
-    priv->ISO9660FS->ReadData(_filedesc,priv_file->offset,len,(uint8_t *)ptr);
-    
-    priv_file->offset=priv_file->offset+len;
-    
-    
-    return len;
 
+    priv->ISO9660FS->ReadData(_filedesc, priv_file->offset, toread, (uint8_t *)ptr);
+    priv_file->offset += toread;
+
+    return toread;
 }
 
 off_t     SWITCH_ISO9660FS::iso9660fs_seek     (struct _reent *r, void *fd, off_t pos, int dir){

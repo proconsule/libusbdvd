@@ -242,7 +242,7 @@ public:
     int UsbDvdSCSI_PASSTROUGHT(uint8_t lun,uint8_t *pass_cbw,uint32_t pass_cbwsize,uint16_t allocation_length,bool data_in,void *buf);
     int internal_sense_command(ScsiRequestSenseDataFixedFormat *sense_data);
     
-    
+    int AppleSuperDriveUnlock(uint8_t lun,uint8_t *buf);
     
     /* MMC-2 Commands*/
     int UsbDvdUnitReady(uint8_t lun);

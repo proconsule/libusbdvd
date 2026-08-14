@@ -137,10 +137,18 @@ int CUSBDVD_DATADISC::isofile_filesectorread(uint32_t sector,uint8_t *buffer){
 
 int CUSBDVD_DATADISC::ReadData(disc_dirlist_struct * _filedesc,uint32_t pos,uint32_t size,uint8_t * buf){
     
+	if(pos >= _filedesc->size){
+        return 0;  
+    }
+    if((uint64_t)pos + size > _filedesc->size){
+        size = _filedesc->size - pos;  
+    }
+	
     if(_filedesc->cached){
         auto lk = std::scoped_lock(read_mutex);
-        uint8_t * _fileref = get_ifo_data(_filedesc->idx,NULL);
-        memcpy(buf,&_fileref[pos],size);
+        uint8_t * _fileref = get_ifo_data(_filedesc->idx, NULL);
+        if(_fileref == NULL) return -1;
+        memcpy(buf, &_fileref[pos], size); 
         return 0;
     }
     

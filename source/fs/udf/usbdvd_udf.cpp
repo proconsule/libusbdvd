@@ -308,37 +308,29 @@ typedef struct {
 } __attribute__((packed))  file_identifier_descriptor_t;
 
 
-std::string UTF16_Truncate(unsigned char * _str,uint32_t _len) {
-        
-	uint8_t string[_len-1];
-	int z=0;
-	for(uint32_t i=0;i<_len;i=i+2){
-		string[z] = _str[i];
-		z++;
-	}
- 
-	std::string result;
-	for (uint32_t i = 0; i < _len/2; i++) {
-		result += static_cast<char>(string[i]);
-	}
-    
-	return result;
+std::string UTF16_Truncate(unsigned char * _str, uint32_t _len) {
+    if (_len < 2) return "";
+
+    std::string result;
+    result.reserve(_len / 2);
+    for (uint32_t i = 1; i < _len; i += 2) {
+        result += static_cast<char>(_str[i]);
+    }
+    return result;
 }
 
-
-std::string dstring_to_string(uint8_t *_dstring,uint8_t _len){
-	if(_len==0)return "";
-	if (_dstring[0] == 0x08 || _dstring[0] == 0x10) {
-		if(_dstring[0] == 0x08){
-			return std::string((char *)_dstring+1,_len-2);
-		}else if(_dstring[0] == 0x10){
-			return UTF16_Truncate(_dstring+2,_len-2);
-		}
-				
-	}else{
-		return std::string((char *)_dstring,_len);
-	}
-	return "";
+std::string dstring_to_string(uint8_t *_dstring, uint8_t _len){
+    if(_len < 2) return "";
+    if (_dstring[0] == 0x08 || _dstring[0] == 0x10) {
+        if(_dstring[0] == 0x08){
+            return std::string((char *)_dstring+1, _len-2);
+        } else if(_dstring[0] == 0x10){
+            return UTF16_Truncate(_dstring+2, _len-2);
+        }
+    } else {
+        return std::string((char *)_dstring, _len);
+    }
+    return "";
 }
 
 
@@ -1080,10 +1072,18 @@ std::vector<sector_range_struct> udf_extents_to_sectors(
 
 int CUSBDVD_UDFFS::UDFReadData(disc_dirlist_struct * _filedesc,size_t pos,size_t size,uint8_t * buf){
     
+    if(pos >= _filedesc->size){
+        return 0;
+    }
+    if(pos + size > _filedesc->size){
+        size = _filedesc->size - pos;
+    }
+
     if(_filedesc->cached){
         auto lk = std::scoped_lock(read_mutex);
-        uint8_t * _fileref = get_udf_small_data(_filedesc->idx,NULL);
-        memcpy(buf,&_fileref[pos],size);
+        uint8_t * _fileref = get_udf_small_data(_filedesc->idx, NULL);
+        if(_fileref == NULL) return -1;
+        memcpy(buf, &_fileref[pos], size);
         return 0;
     }
     

@@ -160,6 +160,10 @@ CUSBDVD::CUSBDVD(bool unfilter_subclass6,bool verboseinit){
             int ret = USB_SCSI->UsbDvdSendInquiry(0,sizeof(ScsiInquiryStandardData),(uint8_t *)&test);
             if(ret!=0)return;
             
+			if(strncmp(test.vendor_id,"Apple",5) == 0 && strncmp(test.product_id,"SuperDrive",10) == 0){
+				USB_SCSI->AppleSuperDriveUnlock(0,0);
+			}
+			
             memset(&usbdvd_ctx,0,sizeof(usbdvd_ctx));
             usbdvd_ctx.drive.subclass = SWITCH_USB->selsubclass;
             memcpy(usbdvd_ctx.drive.vendor_id,test.vendor_id,sizeof(test.vendor_id));

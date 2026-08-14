@@ -301,18 +301,21 @@ ssize_t   SWITCH_UDFFS::udffs_read     (struct _reent *r, void *fd, char *ptr, s
        
     }
     //printf("READ FILE ID: %d\r\n",priv_file->filelist_id);
-    if(priv_file->filelist_id>-1){
-        disc_dirlist_struct * _filedesc = priv->UDFFS->GetFileDescFromIDX(priv_file->filelist_id);
-        //priv->UDFFS->ReadData(_filedesc,priv_file->offset,len,(uint8_t *)ptr);
-        if(_filedesc == NULL)return -1;
-        priv->UDFFS->UDFReadData(_filedesc,priv_file->offset,len,(uint8_t *)ptr);
-        
-        //UDFReadData(disc_dirlist_struct * _filedesc,uint32_t pos,uint32_t size,uint8_t * buf)
-        
-        priv_file->offset=priv_file->offset+len;
-    }
-    
-    return len;
+    if(priv_file->filelist_id > -1){
+		disc_dirlist_struct * _filedesc = priv->UDFFS->GetFileDescFromIDX(priv_file->filelist_id);
+		if(_filedesc == NULL) return -1;
+
+		if((uint64_t)priv_file->offset >= _filedesc->size){
+			return 0;   // EOF
+		}
+		uint64_t remaining = _filedesc->size - (uint64_t)priv_file->offset;
+		size_t toread = (len < remaining) ? len : (size_t)remaining;
+
+		priv->UDFFS->UDFReadData(_filedesc, priv_file->offset, toread, (uint8_t *)ptr);
+		priv_file->offset += toread;
+		return toread;
+	}
+	return -1;
 
 }
 
