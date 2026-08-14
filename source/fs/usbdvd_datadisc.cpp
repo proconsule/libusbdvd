@@ -131,15 +131,14 @@ int CUSBDVD_DATADISC::ReadNumSectors2(uint32_t startsector,uint32_t numblocks,ui
 }
 
 int CUSBDVD_DATADISC::isofile_filesectorread(uint32_t sector,uint8_t *buffer){
-    fseek(isofp,sector*DATA_SECTOR_SIZE,SEEK_SET);
     if(isofp == NULL) return -1;
 
-	fseek(isofp,(long)sector*DATA_SECTOR_SIZE,SEEK_SET);
-	size_t got = fread(buffer, 1, DATA_SECTOR_SIZE, isofp);
-	if(got != DATA_SECTOR_SIZE){
-		if(got < DATA_SECTOR_SIZE) memset(buffer+got, 0, DATA_SECTOR_SIZE-got);
-		return -1;
-	}
+    fseek(isofp,(long)sector*DATA_SECTOR_SIZE,SEEK_SET);
+    size_t got = fread(buffer, 1, DATA_SECTOR_SIZE, isofp);
+    if(got != DATA_SECTOR_SIZE){
+        if(got < DATA_SECTOR_SIZE) memset(buffer+got, 0, DATA_SECTOR_SIZE-got);
+        return -1;
+    }
     return 0;
 }
 
