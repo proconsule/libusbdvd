@@ -62,67 +62,66 @@ int CAUDIOCD_PSEUDOFS::audiocdfs_File2Track(const char * filename){
     return testnum-1;
 }
 
-int CAUDIOCD_PSEUDOFS::audiocdfs_readdata(uint32_t tracknum,uint32_t pos,uint32_t size,uint8_t * buf){
+int CAUDIOCD_PSEUDOFS::audiocdfs_readdata(uint32_t tracknum, uint32_t pos, uint32_t size, uint8_t * buf){
 
-  pthread_mutex_lock(&this->read_lock);
-  if(tracknum>this->toc.hdr.last_track)return -1;
-  int filelba = audiocdfs_gettracklba(tracknum)-150;
+    pthread_mutex_lock(&this->read_lock);
+    if(tracknum > this->toc.hdr.last_track){
+        pthread_mutex_unlock(&this->read_lock);        
+        return -1;
+    }
+    int filelba = audiocdfs_gettracklba(tracknum) - 150;
 
-  uint32_t secpos = pos-44;
-  uint32_t secorreadsize = size;
-  bool include_header = false;
-  if(pos<44)include_header = true;
-  if(include_header){
-      secpos = 0;
-      secorreadsize = size-(44-pos);
-  }
+    uint32_t remread_total = size;
+    uint32_t buffosff = 0;
+    uint32_t secpos = 0;
+    bool include_header = (pos < 44);
 
-  size_t firstsector =  filelba + (secpos/CD_SECTOR_SIZE_AUDIO);
-  size_t offset_firstsector = secpos%CD_SECTOR_SIZE_AUDIO;
-  size_t lastsector = firstsector + (secorreadsize-1/CD_SECTOR_SIZE_AUDIO);
+    if(include_header){
+        wav_hdr test;
+        createWavHeader(&test, tracknum);
+        uint8_t *testpointer = (uint8_t *)&test;
 
-  size_t remread = secorreadsize;
-  size_t buffosff = 0;
+        uint32_t header_avail  = 44 - pos;
+        uint32_t header_tocopy = std::min(size, header_avail);
 
-  if(include_header){
-    buffosff=44-pos;
-    wav_hdr test;
-    createWavHeader(&test,tracknum);
-    uint8_t *testpointer = (uint8_t *)&test;
-    memcpy(buf,testpointer+pos,44-pos);
-    remread-=(44-pos);
+        memcpy(buf, testpointer + pos, header_tocopy);
+        buffosff     += header_tocopy;
+        remread_total -= header_tocopy;
+        secpos = 0;
+    } else {
+        secpos = pos - 44;
+    }
 
-  }
+    if(remread_total == 0){
+        pthread_mutex_unlock(&this->read_lock);
+        return 0;
+    }
 
-    // todo: do reads directly into out buffer.
-    // if out buffer size is not a multiple of CD_SECTOR_SIZE_AUDIO,
-    // then read up to the last block, then read the last block into.
-    // lastBuffer.
-    // when the above is done, remove the setvbuf code from above.
-  for(size_t numblock = firstsector;numblock<=lastsector && remread > 0;numblock++){
+    size_t firstsector        = filelba + (secpos / CD_SECTOR_SIZE_AUDIO);
+    size_t offset_firstsector = secpos % CD_SECTOR_SIZE_AUDIO;
+    size_t lastsector         = firstsector + ((remread_total - 1) / CD_SECTOR_SIZE_AUDIO);
+
+    size_t remread = remread_total;
+
+    for(size_t numblock = firstsector; numblock <= lastsector && remread > 0; numblock++){
         size_t toread;
         size_t offsetinblock = (numblock == firstsector) ? offset_firstsector : 0;
-        if(numblock == firstsector){
-            toread = std::min(remread,(size_t)CD_SECTOR_SIZE_AUDIO-offset_firstsector);
-        }else{
-            toread = std::min(remread,(size_t)CD_SECTOR_SIZE_AUDIO);
-        }
+        toread = (numblock == firstsector)
+                     ? std::min((size_t)remread, (size_t)CD_SECTOR_SIZE_AUDIO - offset_firstsector)
+                     : std::min((size_t)remread, (size_t)CD_SECTOR_SIZE_AUDIO);
 
         if(numblock != this->sectornum){
-            //usb_scsi_ctx->UsbDvdReadCD_Audio(0,numblock,1,this->lastbuffer);
-            ReadCD_Audio_Frame(numblock,this->lastbuffer);
+            ReadCD_Audio_Frame(numblock, this->lastbuffer);
             this->sectornum = numblock;
         }
 
-        memcpy(buf+buffosff,this->lastbuffer+offsetinblock,toread);
+        memcpy(buf + buffosff, this->lastbuffer + offsetinblock, toread);
+        buffosff += toread;
+        remread  -= toread;
+    }
 
-        buffosff+=toread;
-        remread-=toread;
-  }
-
-  pthread_mutex_unlock(&this->read_lock);
-  return 0;
-
+    pthread_mutex_unlock(&this->read_lock);
+    return 0;
 }
 
 int CAUDIOCD_PSEUDOFS::audiocdfs_gettracklba(int tracknum){
