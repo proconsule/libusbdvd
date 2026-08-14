@@ -1,23 +1,24 @@
 #include "audiocdfs.h"
 #include "usbdvd_utils.h"
 
-CAUDIOCD_PSEUDOFS::CAUDIOCD_PSEUDOFS(CDDVD_TOC mytoc,std::string _binfile){
+CAUDIOCD_PSEUDOFS::CAUDIOCD_PSEUDOFS(CDDVD_TOC mytoc, std::string _binfile){
     if (pthread_mutex_init(&this->read_lock, NULL) != 0) {
         usbdvd_log("\n mutex init has failed\n");
         return;
     }
-
-    binfile_fp = fopen(_binfile.c_str(),"rb");
-    // maximise throuput for reads.
+    binfile_fp = fopen(_binfile.c_str(), "rb");
+    if(binfile_fp == NULL){
+        usbdvd_log("Impossibile aprire il file immagine audio: %s\r\n", _binfile.c_str());
+        this->iscdaudio = false; 
+        return;
+    }
     setvbuf(binfile_fp, NULL, _IOFBF, 1024*256);
-
     this->sectornum = 0;
     this->toc = mytoc;
     this->iscdaudio = true;
     this->isfile = true;
-
-
 }
+
 
 CAUDIOCD_PSEUDOFS::CAUDIOCD_PSEUDOFS(CDDVD_TOC mytoc,CUSBSCSI * _usb_scsi_ctx){
     usb_scsi_ctx = _usb_scsi_ctx;
@@ -155,16 +156,14 @@ int CAUDIOCD_PSEUDOFS::audiocdfs_gettracksize(int tracknum){
 
 }
 
-int CAUDIOCD_PSEUDOFS::ReadCD_Audio_Frame(uint32_t _lba,uint8_t *buffer){
+int CAUDIOCD_PSEUDOFS::ReadCD_Audio_Frame(uint32_t _lba, uint8_t *buffer){
     if(isfile){
-        if(!binfile_fp)return -1;
-        uint32_t filepos = _lba*CD_SECTOR_SIZE_AUDIO;
-        fseek(binfile_fp,filepos,SEEK_SET);
-        fread( buffer, sizeof( uint8_t ), CD_SECTOR_SIZE_AUDIO, binfile_fp );
-    }else {
-       return usb_scsi_ctx->UsbDvdReadCD_Audio(0,_lba,1,buffer);
+        if(!binfile_fp) return -1;
+        fseek(binfile_fp, (long)_lba * CD_SECTOR_SIZE_AUDIO, SEEK_SET);
+        size_t got = fread(buffer, 1, CD_SECTOR_SIZE_AUDIO, binfile_fp);
+        return (got == CD_SECTOR_SIZE_AUDIO) ? 0 : -1;
     }
-    return -1;
+    return usb_scsi_ctx->UsbDvdReadCD_Audio(0, _lba, 1, buffer);
 }
 
 int CAUDIOCD_PSEUDOFS::ReadCD_Num_Audio_Frames(uint32_t _lba,uint16_t _num,uint8_t *buffer){
