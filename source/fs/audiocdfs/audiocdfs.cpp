@@ -100,8 +100,8 @@ int CAUDIOCD_PSEUDOFS::audiocdfs_readdata(uint32_t tracknum, uint32_t pos, uint3
 
     size_t firstsector        = filelba + (secpos / CD_SECTOR_SIZE_AUDIO);
     size_t offset_firstsector = secpos % CD_SECTOR_SIZE_AUDIO;
-    size_t lastsector         = firstsector + ((remread_total - 1) / CD_SECTOR_SIZE_AUDIO);
-
+    size_t lastsector = firstsector + ((offset_firstsector + remread_total - 1) / CD_SECTOR_SIZE_AUDIO);
+	
     size_t remread = remread_total;
 
     for(size_t numblock = firstsector; numblock <= lastsector && remread > 0; numblock++){
