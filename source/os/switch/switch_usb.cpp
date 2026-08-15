@@ -415,7 +415,7 @@ Result CSWITCH_USB::usb_device_reset(){
     if_num = usb_if_session->inf.inf.interface_desc.bInterfaceNumber;
 
     /* Perform control transfer. */
-    rc = usbHsIfCtrlXfer(usb_if_session, USB_ENDPOINT_OUT | USB_REQUEST_TYPE_CLASS | USB_RECIPIENT_INTERFACE, USB_REQUEST_BOT_RESET, 0, if_num, 0, NULL, &xfer_size);
+    rc = usbHsIfCtrlXfer(usb_if_session, (u8)USB_ENDPOINT_OUT | (u8)USB_REQUEST_TYPE_CLASS | (u8)USB_RECIPIENT_INTERFACE, (u8)USB_REQUEST_BOT_RESET, 0, if_num, 0, NULL, &xfer_size);
     
 end:
     return rc;
@@ -440,7 +440,7 @@ int CSWITCH_USB::usb_clear_halt(UsbHsClientIfSession *usb_if_session,UsbHsClient
     ep_addr = usb_ep_session->desc.bEndpointAddress;
 
     /* Perform control transfer. */
-    rc = usbHsIfCtrlXfer(usb_if_session, USB_ENDPOINT_OUT | USB_REQUEST_TYPE_STANDARD | USB_RECIPIENT_ENDPOINT, USB_REQUEST_CLEAR_FEATURE, 0x00, ep_addr, 0, NULL, &xfer_size);
+    rc = usbHsIfCtrlXfer(usb_if_session, (u8)USB_ENDPOINT_OUT | (u8)USB_REQUEST_TYPE_STANDARD | (u8)USB_RECIPIENT_ENDPOINT, (u8)USB_REQUEST_CLEAR_FEATURE, 0x00, ep_addr, 0, NULL, &xfer_size);
     
 end:
     return rc;
