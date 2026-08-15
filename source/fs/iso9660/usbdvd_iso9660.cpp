@@ -426,6 +426,14 @@ void CUSBDVD_ISO9660FS::list_dir_iso9660(uint32_t sector, const std::string path
                     rockridge_rr_flags_struct rockridge_rr_flags;
                     memcpy(&rockridge_rr_flags,&rr_ptr[5],1);
                     disc_dirlist_struct tmp;
+					
+					tmp.name     = filename;
+					tmp.size     = byte2u32_le(record->root_size_le);
+					tmp.lba      = byte2u32_le(record->root_lba_le);
+					tmp.fullpath = full_path;
+					tmp.isdir    = is_directory;
+					tmp.st_mode  = is_directory ? S_IFDIR : S_IFREG;
+					
                     
                     uint8_t * rr_loop_ptr = (uint8_t *)rr_ptr+test_rr.len;
                     uint32_t rr_offset = 0;
@@ -487,13 +495,7 @@ void CUSBDVD_ISO9660FS::list_dir_iso9660(uint32_t sector, const std::string path
                             full_path_rr+=filename;
                             
                             tmp.name = (const char *)testname;
-                            tmp.size =  byte2u32_le(record->root_size_le);
-                            tmp.lba = byte2u32_le(record->root_lba_le);
                             tmp.fullpath = full_path_rr;
-                            tmp.isdir = is_directory;
-                            tmp.st_mode = is_directory ? S_IFDIR : S_IFREG;
-                        }else{
-                            break;
                         }
                         rr_offset+=test_head.len;
                         

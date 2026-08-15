@@ -31,7 +31,7 @@ typedef struct{
     uint16_t partition_reference;  
 }udf_extent_struct;
 
-typedef struct{
+typedef struct disc_dirlist_struct{
     std::string name;
     bool isdir;
     bool cached = false;
@@ -56,7 +56,7 @@ typedef struct{
     
 }disc_dirlist_struct;
 
-typedef struct{
+typedef struct drive_readbuf_struct{
     uint8_t read_buffer[2048];
     uint32_t read_sector = 0;
 }drive_readbuf_struct;
