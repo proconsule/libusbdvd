@@ -106,6 +106,8 @@ const char* usbdvd_version(void);
 void usbdvd_cache_ifo_files(usbdvd_obj* obj);
 int usbdvd_read_raw_sectors(void *handle, void *buf, int lba, int num_blocks);
 
+int usbdvd_get_read_ahead_support(usbdvd_obj* obj);
+int usbdvd_get_streaming_mode_support(usbdvd_obj* obj);
 
 
 #ifdef __cplusplus

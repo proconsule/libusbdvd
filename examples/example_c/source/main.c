@@ -184,6 +184,9 @@ void print_drive_info(usbdvd_obj* test,char * _path){
 		}
 		if(usbdvdctx->fs.mounted && strcmp(_path,"") != 0){
 			printf(CONSOLE_ESC(40;5H)CONSOLE_ESC(1m)"Y"CONSOLE_ESC(0m)": Eject Drive "CONSOLE_ESC(1m)"X"CONSOLE_ESC(0m)": Mount Drive "CONSOLE_ESC(1m)"UP/Down"CONSOLE_ESC(0m)": Navigation "CONSOLE_ESC(1m)"A"CONSOLE_ESC(0m)": Select "CONSOLE_ESC(1m)"B"CONSOLE_ESC(0m)": Back\n");
+			if(!currentry.isdir && strlen(currentry.currname) > 0){
+				printf(CONSOLE_ESC(41;5H)CONSOLE_ESC(1m)"MINUS"CONSOLE_ESC(0m)": Speed Test su file selezionato\n");
+			}
 		}else{
 			
 			printf(CONSOLE_ESC(40;25H)""CONSOLE_ESC(1m)"Y"CONSOLE_ESC(0m)": Eject Drive "CONSOLE_ESC(1m)"X"CONSOLE_ESC(0m)": Mount Drive\n");
@@ -208,6 +211,137 @@ char* get_directory(const char *path) {
     }
     
     return path_copy;  
+}
+
+#define SPEEDTEST_SAMPLE_BYTES   (128ULL*1024*1024) 
+#define SPEEDTEST_MAX_SECONDS    20.0
+#define SPEEDTEST_SMALL_BUF      (128*1024)
+#define SPEEDTEST_LARGE_BUF      (4*1024*1024)
+
+typedef struct{
+	char filename[2048];
+	bool ran;
+	bool small_buf_ok;
+	bool large_buf_ok;
+	uint64_t small_buf_bytes;
+	uint64_t large_buf_bytes;
+	double small_buf_secs;
+	double large_buf_secs;
+	double small_buf_mbps;
+	double large_buf_mbps;
+}speedtest_result_struct;
+
+speedtest_result_struct speedtest_result;
+
+bool speedtest_run_pass(const char *fullpath, size_t bufsize, int progress_row, const char *label,
+		uint64_t *out_bytes, double *out_secs){
+	FILE *f = fopen(fullpath,"rb");
+	if(!f) return false;
+
+	uint8_t *buf = (uint8_t *)malloc(bufsize);
+	if(!buf){
+		fclose(f);
+		return false;
+	}
+
+	uint64_t total = 0;
+	u64 start_tick = armGetSystemTick();
+	u64 last_print_tick = start_tick;
+
+	while(total < SPEEDTEST_SAMPLE_BYTES){
+		size_t r = fread(buf,1,bufsize,f);
+		if(r == 0) break;
+			total += r;
+
+		u64 now_tick = armGetSystemTick();
+		double elapsed = armTicksToNs(now_tick - start_tick) / 1e9;
+
+		if(armTicksToNs(now_tick - last_print_tick) / 1e9 >= 0.2){
+			double cur_mbps = elapsed > 0 ? (total/1024.0/1024.0)/elapsed : 0;
+			printf(CONSOLE_ESC(2K)CONSOLE_ESC(%d;2H)"%s: %llu MB letti, %.2f MB/s..."CONSOLE_ESC(0m),
+				progress_row,label,(unsigned long long)(total/1024/1024),cur_mbps);
+			consoleUpdate(NULL);
+			last_print_tick = now_tick;
+		}
+		if(elapsed >= SPEEDTEST_MAX_SECONDS) break; // cap di sicurezza
+	}
+
+	u64 end_tick = armGetSystemTick();
+	free(buf);
+	fclose(f);
+
+	*out_bytes = total;
+	*out_secs = armTicksToNs(end_tick - start_tick) / 1e9;
+	return total > 0;
+}
+
+void run_speed_test(const char *fullpath){
+	memset(&speedtest_result,0,sizeof(speedtest_result));
+	snprintf(speedtest_result.filename,sizeof(speedtest_result.filename),"%s",fullpath);
+
+	printf( CONSOLE_ESC(2J) );
+	printf(CONSOLE_ESC(3;2H)CONSOLE_ESC(1m)"SPEED TEST"CONSOLE_ESC(0m));
+	printf(CONSOLE_ESC(5;2H)"File: %s",fullpath);
+	consoleUpdate(NULL);
+
+	speedtest_result.small_buf_ok = speedtest_run_pass(fullpath,SPEEDTEST_SMALL_BUF,8,
+					"Buffer piccolo (128KB)",
+					&speedtest_result.small_buf_bytes,
+					&speedtest_result.small_buf_secs);
+	if(speedtest_result.small_buf_ok && speedtest_result.small_buf_secs > 0){
+		speedtest_result.small_buf_mbps = (speedtest_result.small_buf_bytes/1024.0/1024.0) / speedtest_result.small_buf_secs;
+	}
+
+	speedtest_result.large_buf_ok = speedtest_run_pass(fullpath,SPEEDTEST_LARGE_BUF,9,"Buffer grande (4MB)   ",
+			&speedtest_result.large_buf_bytes,
+			&speedtest_result.large_buf_secs);
+	if(speedtest_result.large_buf_ok && speedtest_result.large_buf_secs > 0){
+		speedtest_result.large_buf_mbps = (speedtest_result.large_buf_bytes/1024.0/1024.0) / speedtest_result.large_buf_secs;
+	}
+	
+	speedtest_result.ran = true;
+}
+
+void print_speed_test_result(usbdvd_obj* test){
+	printf( CONSOLE_ESC(2J) );
+	printf(CONSOLE_ESC(3;2H)CONSOLE_ESC(1m)"SPEED TEST - RISULTATI"CONSOLE_ESC(0m));
+	printf(CONSOLE_ESC(5;2H)"File: %s",speedtest_result.filename);
+
+	if(speedtest_result.small_buf_ok){
+	printf(CONSOLE_ESC(7;2H)"Buffer piccolo (128KB): "CONSOLE_ESC(1m)"%.2f MB/s"CONSOLE_ESC(0m)"  (%llu MB in %.2fs)",
+		speedtest_result.small_buf_mbps,
+		(unsigned long long)(speedtest_result.small_buf_bytes/1024/1024),
+		speedtest_result.small_buf_secs);
+	}else{
+		printf(CONSOLE_ESC(7;2H)"Buffer piccolo (128KB): "CONSOLE_ESC(1m)"errore in lettura"CONSOLE_ESC(0m));
+	}
+
+	if(speedtest_result.large_buf_ok){
+		printf(CONSOLE_ESC(8;2H)"Buffer grande (4MB):    "CONSOLE_ESC(1m)"%.2f MB/s"CONSOLE_ESC(0m)"  (%llu MB in %.2fs)",
+		speedtest_result.large_buf_mbps,
+			(unsigned long long)(speedtest_result.large_buf_bytes/1024/1024),
+			speedtest_result.large_buf_secs);
+	}else{
+		printf(CONSOLE_ESC(8;2H)"Buffer grande (4MB):    "CONSOLE_ESC(1m)"errore in lettura"CONSOLE_ESC(0m));
+	}
+
+	if(speedtest_result.small_buf_ok && speedtest_result.large_buf_ok && speedtest_result.small_buf_mbps > 0){
+		printf(CONSOLE_ESC(10;2H)"Rapporto buffer grande / buffer piccolo: "CONSOLE_ESC(1m)"%.2fx"CONSOLE_ESC(0m),
+		speedtest_result.large_buf_mbps / speedtest_result.small_buf_mbps);
+	}
+
+	{
+		const char *support_labels[] = {"non ancora provato","SUPPORTATO","non supportato"};
+		int ra = usbdvd_get_read_ahead_support(test);
+		int sm = usbdvd_get_streaming_mode_support(test);
+		if(ra < 0 || ra > 2) ra = 0;
+		if(sm < 0 || sm > 2) sm = 0;
+		printf(CONSOLE_ESC(12;2H)"SET READ AHEAD (0xA7): "CONSOLE_ESC(1m)"%s"CONSOLE_ESC(0m),support_labels[ra]);
+		printf(CONSOLE_ESC(13;2H)"SET STREAMING  (0xB6): "CONSOLE_ESC(1m)"%s"CONSOLE_ESC(0m),support_labels[sm]);
+	}
+
+	printf(CONSOLE_ESC(40;2H)CONSOLE_ESC(1m)"B"CONSOLE_ESC(0m)": Torna al browser");
+	consoleUpdate(NULL);
 }
 
 bool init_end = false;
@@ -244,6 +378,7 @@ int main(int argc, const char* const* argv) {
 	char basepath[2048];
 	memset(openpath,0,sizeof(openpath));
     memset(basepath,0,sizeof(basepath));
+	bool viewing_speedtest = false;
     
     
     /*
@@ -272,7 +407,7 @@ int main(int argc, const char* const* argv) {
         if (kDown & HidNpadButton_Plus) break; // break in order to return to hbmenu
 
 		if (kDown & HidNpadButton_Y) {
-            if(init_end){
+            if(init_end && !viewing_speedtest){
                 svcSleepThread(10000000ULL);
                 if(usbdvdctx->drive.drive_found){
                     usbdvd_eject(test);
@@ -283,7 +418,7 @@ int main(int argc, const char* const* argv) {
 		}
 		
 		if (kDown & HidNpadButton_X) {
-            if(init_end){
+            if(init_end && !viewing_speedtest){
                 svcSleepThread(10000000ULL);
                 if(usbdvdctx->drive.drive_found){
                     usbdvd_mountdisc(test);
@@ -296,7 +431,7 @@ int main(int argc, const char* const* argv) {
 		}
 		
 		if (kDown & HidNpadButton_A) {
-            if(init_end){
+			if(init_end && !viewing_speedtest){
                 svcSleepThread(10000000ULL);
                 if(!currentry.isdir)continue;
                 //memset(openpath,0,sizeof(openpath));
@@ -313,6 +448,12 @@ int main(int argc, const char* const* argv) {
 		
 		if (kDown & HidNpadButton_B) {
             if(init_end==false)init_end=true;
+			if(viewing_speedtest){
+				viewing_speedtest = false;
+				print_drive_info(test,openpath);
+				consoleUpdate(NULL);
+				continue;
+			}
 			cursor_idx=0;
 			if(strcmp(openpath,basepath) == 0){
 				
@@ -330,7 +471,7 @@ int main(int argc, const char* const* argv) {
 		}
 		
 		if (kDown & HidNpadButton_Up) {
-            if(init_end){
+            if(init_end && !viewing_speedtest){
                 svcSleepThread(10000000ULL);
                 if(cursor_idx==0){
                     cursor_idx = currlist_len-1;
@@ -343,14 +484,28 @@ int main(int argc, const char* const* argv) {
 		}
 		
 		if (kDown & HidNpadButton_Down) {
-			svcSleepThread(10000000ULL);
-			cursor_idx+=1;
-			if(cursor_idx>=currlist_len)cursor_idx=0;
-			print_drive_info(test,openpath);
+			if(!viewing_speedtest){
+				svcSleepThread(10000000ULL);
+				cursor_idx+=1;
+				if(cursor_idx>=currlist_len)cursor_idx=0;
+				print_drive_info(test,openpath);
+			}
 		}
         
         if (kDown & HidNpadButton_Minus) {
-            
+			if(init_end && !viewing_speedtest){
+				if(usbdvdctx->fs.mounted && strlen(openpath) > 0 && !currentry.isdir && strlen(currentry.currname) > 0){
+					char fullpath[4096];
+					if(strcmp(openpath,basepath) == 0){
+						snprintf(fullpath,sizeof(fullpath),"%s%s",openpath,currentry.currname);
+					}else{
+						snprintf(fullpath,sizeof(fullpath),"%s/%s",openpath,currentry.currname);
+					}
+					run_speed_test(fullpath);
+					print_speed_test_result(test);
+					viewing_speedtest = true;
+				}
+			}
 		}
 	
         consoleUpdate(NULL);

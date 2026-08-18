@@ -665,6 +665,21 @@ usbdvd_struct * usbdvd_get_ctx(usbdvd_obj* obj){
     return &cast_to_cpp(obj)->usbdvd_ctx;
 }
 
+int usbdvd_get_read_ahead_support(usbdvd_obj* obj){
+	if (!obj) return 0;
+	CUSBDVD* cppobj = cast_to_cpp(obj);
+	if (!cppobj->USB_SCSI) return 0;
+	return (int)cppobj->USB_SCSI->GetReadAheadSupport();
+}
+
+int usbdvd_get_streaming_mode_support(usbdvd_obj* obj){
+	if (!obj) return 0;
+	CUSBDVD* cppobj = cast_to_cpp(obj);
+	if (!cppobj->USB_SCSI) return 0;
+	return (int)cppobj->USB_SCSI->GetStreamingModeSupport();
+}
+
+
 const char* usbdvd_version(void){
     static char version[32];
     snprintf(version, sizeof(version), "%s",LIBUSBDVD_VERSION_STRING);

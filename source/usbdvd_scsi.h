@@ -289,6 +289,10 @@ public:
 	int UsbDvdReadAheadSafe(uint8_t lun,uint32_t read_lba,uint32_t last_sector);
 	int UsbDvdSetStreamingModeSafe(uint8_t lun,uint32_t start_lba,uint32_t end_lba,uint32_t read_size,uint32_t read_time);
     
+	UsbDvdFeatureSupport GetReadAheadSupport(){ return read_ahead_support; }
+	UsbDvdFeatureSupport GetStreamingModeSupport(){ return streaming_mode_support; }
+    
+	
     /* CSS Releated  */
     int CrackTitleKey( int i_pos, int i_len,uint8_t * p_titlekey );
     int GetBusKey();
@@ -311,7 +315,8 @@ private:
 	
 	UsbDvdFeatureSupport read_ahead_support = UsbDvdFeatureSupport_Unknown;
 	UsbDvdFeatureSupport streaming_mode_support = UsbDvdFeatureSupport_Unknown;
-    
+	
+
     int send_scsi_command(CBW *cbw,bool receive,void *buf,bool auto_sense = false);
     int send_scsi_command_pass(CBW *cbw, bool receive, void *buf);
 
