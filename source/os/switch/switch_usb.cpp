@@ -17,7 +17,7 @@
 
 
 #define USB_BUF_ALIGNMENT   0x1000
-#define USB_TRANS_BUF_SIZE  0x100000
+
 
 #define RETRY_MAX 3
 
@@ -318,6 +318,14 @@ int CSWITCH_USB::usb_bulk_transfer(bool receive,void *buf,uint32_t data_size,uin
     if (!buf || !xfer_buf || !data_transfered) {
         return MAKERESULT(Module_Libnx, LibnxError_BadInput);
     }
+	
+	if (data_size > USB_TRANS_BUF_SIZE) {
+
+		usbdvd_log("usb_bulk_transfer: data_size %u exceeds xfer_buf size %u\r\n",
+				data_size, (uint32_t)USB_TRANS_BUF_SIZE);
+		return MAKERESULT(Module_Libnx, LibnxError_BadInput);
+	}
+	
     if(!receive){
         memcpy(xfer_buf,buf,data_size);
     }
@@ -330,6 +338,8 @@ int CSWITCH_USB::usb_bulk_transfer(bool receive,void *buf,uint32_t data_size,uin
             }
     //        i++;
     //} while ((rc != 0) && (i<RETRY_MAX));
+	
+	
     
     if(receive && R_SUCCEEDED(rc)){
         memcpy(buf,xfer_buf,data_size);

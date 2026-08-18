@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include <switch.h>
 #include <mutex>
+
+#define USB_TRANS_BUF_SIZE  0x400000
     
 class CSWITCH_USB{
 public:

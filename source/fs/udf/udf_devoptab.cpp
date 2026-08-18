@@ -97,13 +97,19 @@ int  SWITCH_UDFFS::udffs_open     (struct _reent *r, void *fileStruct, const cha
     
     disc_dirlist_struct * _filedesc = priv->UDFFS->GetFileDescFromIDX(fileret);
     if(_filedesc == NULL)return -1;
-    if(_filedesc->streaming){
-        //printf("Open STREAMING Mode\r\n");
-        //for(int i=0;i<(int)_filedesc->extents.size();i++){
-            //priv->UDFFS->usb_scsi_ctx->UsbDvdSetStreamingMode(0,priv->UDFFS->partitionlba+_filedesc->extents[0].location,priv->UDFFS->partitionlba+_filedesc->extents[0].location+_filedesc->extents[0].length,27000,1000);
-        //}
-        //printf("STREAMING FILE\r\n");
-    }
+    
+	if(!_filedesc->isdir && !_filedesc->extents.empty()){
+
+	uint64_t range_start = priv->UDFFS->partitionlba + _filedesc->extents.front().location;
+	uint64_t range_end = range_start;
+	for(const auto &ext : _filedesc->extents){
+		uint64_t ext_start = priv->UDFFS->partitionlba + ext.location;
+		uint64_t ext_end = ext_start + ext.length;
+		if(ext_start < range_start) range_start = ext_start;
+			if(ext_end > range_end) range_end = ext_end;
+		}
+		//priv->UDFFS->usb_scsi_ctx->UsbDvdSetStreamingModeSafe(0,(uint32_t)range_start,(uint32_t)range_end,27000,1000);
+	}
     
     priv_file->filelist_id = fileret;
     priv_file->offset = 0;

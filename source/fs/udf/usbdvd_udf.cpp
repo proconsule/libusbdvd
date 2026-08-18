@@ -994,6 +994,7 @@ CUSBDVD_UDFFS::CUSBDVD_UDFFS(CUSBSCSI * _usb_scsi_ctx,uint32_t _startlba,uint32_
 
 CUSBDVD_UDFFS::~CUSBDVD_UDFFS(){
 	if(metadata_partition_buffer!=NULL)free(metadata_partition_buffer);
+	if(read_chunk_buffer!=NULL)free(read_chunk_buffer);
     cleanup_udf_small_cache();
     
 }
@@ -1068,6 +1069,18 @@ std::vector<sector_range_struct> udf_extents_to_sectors(
 }
 
 
+static const uint32_t UDF_READ_CHUNK_SECTORS = USB_TRANS_BUF_SIZE / DATA_SECTOR_SIZE;
+
+uint8_t * CUSBDVD_UDFFS::get_read_chunk_buffer(){
+	if(read_chunk_buffer == NULL){
+		read_chunk_buffer = (uint8_t *)malloc(UDF_READ_CHUNK_SECTORS * DATA_SECTOR_SIZE);
+		if(read_chunk_buffer == NULL){
+		usbdvd_log("get_read_chunk_buffer: allocazione failed (%u byte)\r\n",
+			UDF_READ_CHUNK_SECTORS * DATA_SECTOR_SIZE);
+		}
+	}
+	return read_chunk_buffer;
+}
 
 
 int CUSBDVD_UDFFS::UDFReadData(disc_dirlist_struct * _filedesc,size_t pos,size_t size,uint8_t * buf){
@@ -1121,17 +1134,35 @@ int CUSBDVD_UDFFS::UDFReadData(disc_dirlist_struct * _filedesc,size_t pos,size_t
         if(numblocks_to_read == 0)return 0;
 
         
-        uint8_t mybuffer[numblocks_to_read * DATA_SECTOR_SIZE];
-        
-        ReadNumSectors2(startblock, numblocks_to_read, mybuffer, _filedesc->streaming);
-        
-        size_t toread = std::min(remread, (size_t)(numblocks_to_read * DATA_SECTOR_SIZE) - offsetinblock);
-        
-        memcpy(buf + buffosff, mybuffer + offsetinblock, toread);
-        
-        
-        buffosff += toread;
-        remread -= toread;
+		uint8_t * chunkbuf = get_read_chunk_buffer();
+		if(chunkbuf == NULL) return -1;
+
+		uint32_t blocks_remaining = numblocks_to_read;
+		uint64_t chunk_startblock = startblock;
+		bool first_chunk = true;
+
+		while (blocks_remaining > 0 && remread > 0) {
+			uint32_t blocks_this_chunk = std::min(blocks_remaining, UDF_READ_CHUNK_SECTORS);
+			ReadNumSectors2(chunk_startblock, blocks_this_chunk, chunkbuf, _filedesc->streaming);
+
+			uint64_t this_offset = first_chunk ? offsetinblock : 0;
+			size_t toread = std::min(remread, (size_t)(blocks_this_chunk * DATA_SECTOR_SIZE) - this_offset);
+
+			memcpy(buf + buffosff, chunkbuf + this_offset, toread);
+
+			buffosff += toread;
+			remread -= toread;
+			chunk_startblock += blocks_this_chunk;
+			blocks_remaining -= blocks_this_chunk;
+			first_chunk = false;
+			
+			if (blocks_remaining > 0 && remread > 0) {
+				uint32_t next_chunk_len = std::min(blocks_remaining, UDF_READ_CHUNK_SECTORS);
+				usb_scsi_ctx->UsbDvdReadAheadSafe(0,(uint32_t)chunk_startblock,
+					(uint32_t)(chunk_startblock + next_chunk_len - 1));
+			}
+			
+		}
      
     }
     

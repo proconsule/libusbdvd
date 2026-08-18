@@ -98,6 +98,8 @@ private:
     int load_udf_small_by_index(int file_idx);
     uint8_t* get_udf_small_data(int file_idx, size_t *size_out);
     
+	uint8_t * read_chunk_buffer = NULL;
+	uint8_t * get_read_chunk_buffer();
     
 };
 

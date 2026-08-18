@@ -50,8 +50,13 @@ int CUSBSCSI::UsbDvdSCSI_PASSTROUGHT(uint8_t lun,uint8_t *pass_cbw,uint32_t pass
     uint16_t final_allocation_length = allocation_length;
     
     
+	if (!pass_cbw || pass_cbwsize == 0 || pass_cbwsize > sizeof(cbw.CBWCB)) {
+
+		usbdvd_log("UsbDvdSCSI_PASSTROUGHT: invalid CDB length %u\r\n", pass_cbwsize);
+		return -1;
+	}
     
-    CreateCommandBlockWrapper(&cbw,final_allocation_length,data_in,0,pass_cbwsize);
+    CreateCommandBlockWrapper(&cbw,final_allocation_length,data_in,0,(uint8_t)pass_cbwsize);
     memcpy(&cbw.CBWCB,pass_cbw,pass_cbwsize);
     
     
@@ -388,85 +393,25 @@ int CUSBSCSI::UsbDvdResetStreamingMode(uint8_t lun){
 }
 
 int CUSBSCSI::UsbDvdSetStreamingMode(uint8_t lun,uint32_t start_lba,uint32_t end_lba,uint32_t read_size,uint32_t read_time){
-    uint32_t transferred = 0;
-    CBW cbw = {0};
-    memset(&cbw,0,sizeof(CBW));
-    CreateCommandBlockWrapper(&cbw,0,false,0,12);
-    cbw.CBWCB[0] = 0xB6;
-    cbw.CBWCB[8] = 0x00;
-    cbw.CBWCB[9] = 0x1c;
     
-    int r = usb_ctx->usb_bulk_transfer(false,&cbw,sizeof(CBW),&transferred,5000);
-    
-    
-    streaming_params_t bd_params = {
-        .control_byte = 0x00, // 0x01 streaming mode
-        .start_lba = __builtin_bswap32(0),       //Start LBA 
-        .end_lba = __builtin_bswap32(0xffffffff),          // End LBA 
-        .read_size = __builtin_bswap32(read_size),               // 128 means 128KB read size
-        .read_time = __builtin_bswap32(read_time),              // 1500 means 1500ms read time
-        .write_size = __builtin_bswap32(0),                // 0 (non used)
-        .write_time = __builtin_bswap32(0)                 // 0 (non used)
-    };
-    
-    r = usb_ctx->usb_bulk_transfer(false,&bd_params,sizeof(bd_params),&transferred,5000);
-    
-    CSW csw = {0};
-    uint32_t cswtrans = 0;
-    r = usb_ctx->usb_bulk_transfer(true,(uint8_t*)&csw,sizeof(CSW),&cswtrans,5000);
-    if(cswtrans==sizeof(CSW)){
-        //uint8_t *testcsw = (uint8_t *)&csw;
-        /*
-        usbdvd_log("CSW: ");
-        for(int i=0;i<(int)sizeof(CSW);i++){
-            usbdvd_log("%02hhx ",testcsw[i]);
-        }
-        usbdvd_log("\r\n");
-        */
-        if (r < 0) {
-            return r;
-        }
+	streaming_params_t bd_params = {
+		.control_byte = 0x01, 
+		.start_lba = __builtin_bswap32(start_lba),
+		.end_lba = __builtin_bswap32(end_lba),
+		.read_size = __builtin_bswap32(read_size),            
+		.read_time = __builtin_bswap32(read_time),            
+		.write_size = __builtin_bswap32(0),             
+		.write_time = __builtin_bswap32(0)              
+	};
+	
+	CBW cbw = {0};
 
-        
-        if (csw.dCSWSignature != CSW_SIGNATURE) {
-            //usbdvd_log("SIG ERROR\r\n");
-            return -1;
-        }
-        if (csw.dCSWTag != cbw.dCBWTag) {
-            //usbdvd_log("TAG ERROR\r\n");
-            return -1;
-        }
-        if (csw.bCSWStatus != 0) {
-            
-            ScsiRequestSenseDataFixedFormat testsense = {0};
-            
-            UsbDvdSense(0,sizeof(ScsiRequestSenseDataFixedFormat),&testsense);
-            //usbdvd_log("STATUS: %02hhx\r\n",testsense.sense_key);
-            switch(testsense.sense_key)
-            {
-                case ScsiSenseKey_NoSense:
-                case ScsiSenseKey_RecoveredError:
-                case ScsiSenseKey_UnitAttention:
-                case ScsiSenseKey_Completed:
-                    return 0;
-                    break;
-                case ScsiSenseKey_NotReady:
-                    if (testsense.additional_sense_code == SCSI_ASC_MEDIUM_NOT_PRESENT){
-                        //usbdvd_log("No Medium on drive\r\n");
-                        return -2;
-                        break;
-                    }
-                default:
-                    //usbdvd_log("Unrecoverable error");
-                    break;
-            }
-            //usbdvd_log("STATUS ERROR\r\n");
-            return -1;
-        }
-    }
-    
-    
-    return 0;
+	CreateCommandBlockWrapper(&cbw,sizeof(bd_params),false,0,12);
+	cbw.CBWCB[0] = 0xB6;
+	cbw.CBWCB[8] = 0x00;
+	cbw.CBWCB[9] = 0x1c;
+	return send_scsi_command(&cbw,false,&bd_params);
+	
 }
     
 
@@ -840,21 +785,54 @@ int CUSBSCSI::UsbDvdReadAhead(uint8_t lun,uint32_t read_lba,uint32_t last_sector
     
 }
 
+int CUSBSCSI::UsbDvdReadAheadSafe(uint8_t lun,uint32_t read_lba,uint32_t last_sector){
+	if (read_ahead_support == UsbDvdFeatureSupport_Unsupported) {
+		return -1; // gia' sappiamo che questo drive non lo supporta: no-op immediato
+	}
+
+	int ret = UsbDvdReadAhead(lun, read_lba, last_sector);
+	
+	if (read_ahead_support == UsbDvdFeatureSupport_Unknown) {
+		read_ahead_support = (ret == 0) ? UsbDvdFeatureSupport_Supported
+						: UsbDvdFeatureSupport_Unsupported;
+		if (ret != 0) {
+			usbdvd_log("SET READ AHEAD (0xA7) non supportato da questo drive, disabilitato per la sessione\r\n");
+		}
+	}
+
+	return ret;
+}
+
+int CUSBSCSI::UsbDvdSetStreamingModeSafe(uint8_t lun,uint32_t start_lba,uint32_t end_lba,uint32_t read_size,uint32_t read_time){
+	if (streaming_mode_support == UsbDvdFeatureSupport_Unsupported) {
+		return -1; 
+	}
+	
+	int ret = UsbDvdSetStreamingMode(lun, start_lba, end_lba, read_size, read_time);
+
+	if (streaming_mode_support == UsbDvdFeatureSupport_Unknown) {
+		streaming_mode_support = (ret == 0) ? UsbDvdFeatureSupport_Supported
+					: UsbDvdFeatureSupport_Unsupported;
+		if (ret != 0) {
+			usbdvd_log("SET STREAMING (0xB6) non supportato da questo drive, disabilitato per la sessione\r\n");
+		}
+	}
+
+	return ret;
+}
+
 int CUSBSCSI::internal_sense_command(ScsiRequestSenseDataFixedFormat *sense_data) {
-    // ATTENZIONE: Questa funzione NON deve acquisire il mutex!
-    // Viene chiamata dall'interno di send_scsi_command() che già lo possiede
     
     int r = 0;
     uint32_t transferred = 0;
     CSW csw = {0};
     
-    // Crea CBW per REQUEST SENSE
     CBW cbw = {0};
     CreateCommandBlockWrapper(&cbw, sizeof(ScsiRequestSenseDataFixedFormat), true, 0, 12);
-    cbw.CBWCB[0] = 0x03; // REQUEST SENSE command
-    cbw.CBWCB[4] = sizeof(ScsiRequestSenseDataFixedFormat); // Allocation length
+    cbw.CBWCB[0] = 0x03;
+    cbw.CBWCB[4] = sizeof(ScsiRequestSenseDataFixedFormat);
     
-    // Invia CBW (chiamata diretta USB senza mutex)
+
     r = usb_ctx->usb_bulk_transfer(false, &cbw, sizeof(CBW), &transferred, 5000);
     if (r < 0) {
         return r;
@@ -899,10 +877,11 @@ int CUSBSCSI::send_scsi_command(CBW *cbw, bool receive, void *buf, bool auto_sen
     // Invia CBW
     r = usb_ctx->usb_bulk_transfer(false, cbw, sizeof(CBW), &transferred, 5000);
     if (r < 0) {
-        
+        usbdvd_log("CBW SEND ERROR\r\n");
+		return r;
     }
     
-    if (cbw->dCBWDataTransferLength > 0 && r >= 0) {
+    if (cbw->dCBWDataTransferLength > 0) {
         if (receive) {
             r = usb_ctx->usb_bulk_transfer(true, buf, cbw->dCBWDataTransferLength, &transferred, 10000);
         } else {
@@ -917,25 +896,27 @@ int CUSBSCSI::send_scsi_command(CBW *cbw, bool receive, void *buf, bool auto_sen
     uint32_t cswtrans = 0;
     r = usb_ctx->usb_bulk_transfer(true, (uint8_t*)&csw, sizeof(CSW), &cswtrans, 5000);
     
-    if(cswtrans == sizeof(CSW)) {
-        if (r < 0) {
-                return r;
-            }
+    if (cswtrans != sizeof(CSW)) {
+	
+		return (r < 0) ? r : -1;
+	}
 
-            
-            if (csw.dCSWSignature != CSW_SIGNATURE) {
-                usbdvd_log("SIG ERROR\r\n");
-                return -1;
-            }
-            if (csw.dCSWTag != cbw->dCBWTag) {
-                usbdvd_log("TAG ERROR\r\n");
-                return -1;
-            }
-            if (csw.bCSWStatus != 0) {
-                usbdvd_log("STATUS ERROR\r\n");
-                return -1;
-            }
-    }
+	if (r < 0) {
+		return r;
+	}
+
+	if (csw.dCSWSignature != CSW_SIGNATURE) {
+		usbdvd_log("SIG ERROR\r\n");
+		return -1;
+	}
+	if (csw.dCSWTag != cbw->dCBWTag) {
+		usbdvd_log("TAG ERROR\r\n");
+		return -1;
+	}
+	if (csw.bCSWStatus != 0) {
+		usbdvd_log("STATUS ERROR\r\n");
+		return -1;
+	}
     
     return data_error;
 }
@@ -952,6 +933,7 @@ int CUSBSCSI::send_scsi_command_pass(CBW *cbw, bool receive, void *buf){
         return r;
     }
     uint32_t stage2_trans = 0;
+	int data_error = 0;
     if (cbw->dCBWDataTransferLength > 0) {
         if (receive) {
             r = usb_ctx->usb_bulk_transfer(true, buf, cbw->dCBWDataTransferLength, &stage2_trans, 10000);
@@ -964,26 +946,36 @@ int CUSBSCSI::send_scsi_command_pass(CBW *cbw, bool receive, void *buf){
             printf("\r\n");
             r = usb_ctx->usb_bulk_transfer(false, buf, cbw->dCBWDataTransferLength,     &stage2_trans, 10000);
         }
+		
+		if (r < 0) {
+			data_error = r;
+		}
         
     }
     
     uint32_t cswtrans = 0;
     r = usb_ctx->usb_bulk_transfer(true, (uint8_t*)&csw, sizeof(CSW), &cswtrans, 5000);
     
-    if(cswtrans == sizeof(CSW)) {
-        if (csw.dCSWSignature != CSW_SIGNATURE) {
-                usbdvd_log("SIG ERROR\r\n");
-                return -1;
-            }
-            if (csw.dCSWTag != cbw->dCBWTag) {
-                usbdvd_log("TAG ERROR\r\n");
-                return -1;
-            }
-            if (csw.bCSWStatus != 0) {
-                usbdvd_log("STATUS ERROR\r\n");
-                return -1;
-            }
-    }
+	if (cswtrans != sizeof(CSW)) {
+		usbdvd_log("CSW SHORT/MISSING\r\n");
+		return (data_error < 0) ? data_error : ((r < 0) ? r : -1);
+	}
+
+	if (csw.dCSWSignature != CSW_SIGNATURE) {
+		usbdvd_log("SIG ERROR\r\n");
+		return -1;
+	}
+	if (csw.dCSWTag != cbw->dCBWTag) {
+		usbdvd_log("TAG ERROR\r\n");
+		return -1;
+	}
+	if (csw.bCSWStatus != 0) {
+		usbdvd_log("STATUS ERROR\r\n");
+		return -1;
+	}
+	if (data_error < 0) {
+		return data_error;
+	}
     
     return stage2_trans;
 }

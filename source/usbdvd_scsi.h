@@ -232,6 +232,12 @@ typedef struct _SCSI_PASS_THROUGH_DIRECT {
 } SCSI_PASS_THROUGH_DIRECT, *PSCSI_PASS_THROUGH_DIRECT;
 
 
+typedef enum {
+	UsbDvdFeatureSupport_Unknown = 0,
+	UsbDvdFeatureSupport_Supported = 1,
+	UsbDvdFeatureSupport_Unsupported = 2
+} UsbDvdFeatureSupport;
+
 class CUSBSCSI{
 public:
     CUSBSCSI(CSWITCH_USB * _usb_ctx);
@@ -280,6 +286,8 @@ public:
     
     /* MMC-6 Commands*/
     int UsbDvdReadAhead(uint8_t lun,uint32_t read_lba,uint32_t last_sector);
+	int UsbDvdReadAheadSafe(uint8_t lun,uint32_t read_lba,uint32_t last_sector);
+	int UsbDvdSetStreamingModeSafe(uint8_t lun,uint32_t start_lba,uint32_t end_lba,uint32_t read_size,uint32_t read_time);
     
     /* CSS Releated  */
     int CrackTitleKey( int i_pos, int i_len,uint8_t * p_titlekey );
@@ -300,6 +308,9 @@ private:
     //std::mutex usb_mutex;
     
     std::mutex scsi_operation_mutex;
+	
+	UsbDvdFeatureSupport read_ahead_support = UsbDvdFeatureSupport_Unknown;
+	UsbDvdFeatureSupport streaming_mode_support = UsbDvdFeatureSupport_Unknown;
     
     int send_scsi_command(CBW *cbw,bool receive,void *buf,bool auto_sense = false);
     int send_scsi_command_pass(CBW *cbw, bool receive, void *buf);
