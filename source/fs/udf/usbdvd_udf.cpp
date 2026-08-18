@@ -1116,6 +1116,8 @@ int CUSBDVD_UDFFS::UDFReadData(disc_dirlist_struct * _filedesc,size_t pos,size_t
     
     size_t buffosff = 0;
     size_t remread = size;
+	uint64_t last_block_read = 0;
+	bool have_last_block = false;
     for(unsigned int i=0;i<test.size();i++){
         uint64_t startblock = partitionlba + test[i].sector;
         uint32_t numblocks_to_read = test[i].len;
@@ -1129,6 +1131,8 @@ int CUSBDVD_UDFFS::UDFReadData(disc_dirlist_struct * _filedesc,size_t pos,size_t
             buffosff+=tobufread;
             remread-=tobufread;
             numblocks_to_read=numblocks_to_read-1;
+			last_block_read = startblock;
+			have_last_block = true;
         }
         
         if(numblocks_to_read == 0)return 0;
@@ -1156,16 +1160,18 @@ int CUSBDVD_UDFFS::UDFReadData(disc_dirlist_struct * _filedesc,size_t pos,size_t
 			blocks_remaining -= blocks_this_chunk;
 			first_chunk = false;
 			
-			if (blocks_remaining > 0 && remread > 0) {
-				uint32_t next_chunk_len = std::min(blocks_remaining, UDF_READ_CHUNK_SECTORS);
-				usb_scsi_ctx->UsbDvdReadAheadSafe(0,(uint32_t)chunk_startblock,
-					(uint32_t)(chunk_startblock + next_chunk_len - 1));
-			}
+			last_block_read = chunk_startblock;
+			have_last_block = true;
 			
 		}
      
     }
     
+	
+	if(have_last_block){
+		usb_scsi_ctx->UsbDvdReadAheadSafe(0,(uint32_t)last_block_read,
+		(uint32_t)(last_block_read + UDF_READ_CHUNK_SECTORS - 1));
+	}
     
     /*
     if(_filedesc->streaming){

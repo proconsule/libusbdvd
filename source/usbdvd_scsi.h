@@ -285,8 +285,8 @@ public:
     int UsbDvdResetStreamingMode(uint8_t lun);
     
     /* MMC-6 Commands*/
-    int UsbDvdReadAhead(uint8_t lun,uint32_t read_lba,uint32_t last_sector);
-	int UsbDvdReadAheadSafe(uint8_t lun,uint32_t read_lba,uint32_t last_sector);
+	int UsbDvdReadAhead(uint8_t lun,uint32_t start_lba,uint32_t read_ahead_lba);
+	int UsbDvdReadAheadSafe(uint8_t lun,uint32_t start_lba,uint32_t read_ahead_lba);
 	int UsbDvdSetStreamingModeSafe(uint8_t lun,uint32_t start_lba,uint32_t end_lba,uint32_t read_size,uint32_t read_time);
     
 	UsbDvdFeatureSupport GetReadAheadSupport(){ return read_ahead_support; }

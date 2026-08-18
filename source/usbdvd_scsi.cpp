@@ -764,20 +764,20 @@ int CUSBSCSI::UsbDvd_Read10(uint8_t lun,uint32_t read_lba,uint16_t numsec,uint8_
     return send_scsi_command(&cbw,true,data);
 }
 
-int CUSBSCSI::UsbDvdReadAhead(uint8_t lun,uint32_t read_lba,uint32_t last_sector){
+int CUSBSCSI::UsbDvdReadAhead(uint8_t lun,uint32_t start_lba,uint32_t read_ahead_lba){
     CBW cbw = {0};
     memset(&cbw,0,sizeof(CBW));
     CreateCommandBlockWrapper(&cbw,0,false,0,12);
     
     cbw.CBWCB[0] = 0xa7;            
-    cbw.CBWCB[2] = (last_sector >> 24) & 0xFF; 
-    cbw.CBWCB[3] = (last_sector >> 16) & 0xFF;
-    cbw.CBWCB[4] = (last_sector >> 8) & 0xFF;
-    cbw.CBWCB[5] = last_sector & 0xFF;
-    cbw.CBWCB[6] = (read_lba >> 24) & 0xFF; 
-    cbw.CBWCB[7] = (read_lba >> 16) & 0xFF;
-    cbw.CBWCB[8] = (read_lba >> 8) & 0xFF;
-    cbw.CBWCB[9] = read_lba & 0xFF;
+	cbw.CBWCB[2] = (start_lba >> 24) & 0xFF; 
+	cbw.CBWCB[3] = (start_lba >> 16) & 0xFF;
+	cbw.CBWCB[4] = (start_lba >> 8) & 0xFF;
+	cbw.CBWCB[5] = start_lba & 0xFF;
+	cbw.CBWCB[6] = (read_ahead_lba >> 24) & 0xFF; 
+	cbw.CBWCB[7] = (read_ahead_lba >> 16) & 0xFF;
+	cbw.CBWCB[8] = (read_ahead_lba >> 8) & 0xFF;
+	cbw.CBWCB[9] = read_ahead_lba & 0xFF;
     cbw.CBWCB[10] = 0x00;  
     cbw.CBWCB[11] = 0x00;  
     
@@ -785,12 +785,13 @@ int CUSBSCSI::UsbDvdReadAhead(uint8_t lun,uint32_t read_lba,uint32_t last_sector
     
 }
 
-int CUSBSCSI::UsbDvdReadAheadSafe(uint8_t lun,uint32_t read_lba,uint32_t last_sector){
+int CUSBSCSI::UsbDvdReadAheadSafe(uint8_t lun,uint32_t start_lba,uint32_t read_ahead_lba){
+	return -1;
 	if (read_ahead_support == UsbDvdFeatureSupport_Unsupported) {
 		return -1; // gia' sappiamo che questo drive non lo supporta: no-op immediato
 	}
 
-	int ret = UsbDvdReadAhead(lun, read_lba, last_sector);
+	int ret = UsbDvdReadAhead(lun, start_lba, read_ahead_lba);
 	
 	if (read_ahead_support == UsbDvdFeatureSupport_Unknown) {
 		read_ahead_support = (ret == 0) ? UsbDvdFeatureSupport_Supported
