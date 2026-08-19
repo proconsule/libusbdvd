@@ -401,14 +401,21 @@ void CUSBDVD_UDFFS::Parse_FileEntry_Ptr(uint8_t * buffer,disc_dirlist_struct * _
 		_tmpfile->attribute_time = udf102_to_unix_timestamp(testentry.attribute_time);
 		
 			
-		UDF_ExtentAd testdesc = {0};
-		memcpy(&testdesc,buffer+fe_pos+testentry.u_extended_attr,testentry.u_alloc_descs);
-		_tmpfile->part_lba = testdesc.location;
-		_tmpfile->lba = partitionlba+testdesc.location;
-		udf_extent_struct tmpextent = {0};
-		tmpextent.location =  testdesc.location;
-		tmpextent.length =  testdesc.length;
-		_tmpfile->extents.push_back(tmpextent);
+		uint8_t _alloctype = testentry.icb_tag.flags & 0x0007;
+		if(_alloctype == 0x00){
+			for(int i=0;i<(int)(testentry.u_alloc_descs/sizeof(UDF_ExtentAd));i++){
+				UDF_ExtentAd testdesc = {0};
+				memcpy(&testdesc,buffer+fe_pos+testentry.u_extended_attr+(i*sizeof(UDF_ExtentAd)),sizeof(UDF_ExtentAd));
+				_tmpfile->part_lba = testdesc.location;
+				_tmpfile->lba = partitionlba+testdesc.location;
+				udf_extent_struct tmpextent = {0};
+				tmpextent.location =  testdesc.location;
+				tmpextent.length =  testdesc.length;
+				_tmpfile->extents.push_back(tmpextent);
+			}
+		}else if(_alloctype == 0x01){
+			Parse_ExtendedFileEntry_Ptr(buffer,_tmpfile);
+		}
 		
 	
 	} else if(testentry.tag.tag_identifier == 266) {
@@ -681,9 +688,9 @@ CUSBDVD_UDFFS::CUSBDVD_UDFFS(std::string _filename)
 			if(_alloctype == 0x00){
 				
 				
-				for(int i=0;i<(int)(root_filentry.u_alloc_descs/8);i++){
+				for(int i=0;i<(int)(root_filentry.u_alloc_descs/sizeof(UDF_ExtentAd));i++){
 					UDF_ExtentAd firsttestdesc = {0};
-					memcpy(&firsttestdesc,udf_first_descriptor+sizeof(udf_extended_file_entry)+root_filentry.u_extended_attr+(i*8),root_filentry.u_alloc_descs);
+					memcpy(&firsttestdesc,udf_first_descriptor+sizeof(udf_extended_file_entry)+root_filentry.u_extended_attr+(i*sizeof(UDF_ExtentAd)),sizeof(UDF_ExtentAd));
 					udf_extent_struct tmpextent = {0};
 					tmpextent.location = firsttestdesc.location;
 					tmpextent.length = firsttestdesc.length;
@@ -697,15 +704,18 @@ CUSBDVD_UDFFS::CUSBDVD_UDFFS(std::string _filename)
 				}
 				
 			}else if(_alloctype == 0x01){
-				UDF_LongAd firsttestdesc = {0};
-				memcpy(&firsttestdesc,udf_first_descriptor+sizeof(udf_extended_file_entry)+root_filentry.u_extended_attr,root_filentry.u_alloc_descs);
-				udf_extent_struct tmpextent = {0};
-				tmpextent.location = firsttestdesc.location;
-				tmpextent.length = firsttestdesc.length;
-				tmpextent.partition_reference = firsttestdesc.partition_reference;
-				metadata_extents.push_back(tmpextent);
+				for(int i=0;i<(int)(root_filentry.u_alloc_descs/sizeof(UDF_LongAd));i++){
+					UDF_LongAd firsttestdesc = {0};
+					memcpy(&firsttestdesc,udf_first_descriptor+sizeof(udf_extended_file_entry)+root_filentry.u_extended_attr+(i*sizeof(UDF_LongAd)),sizeof(UDF_LongAd));
+					udf_extent_struct tmpextent = {0};
+					tmpextent.location = firsttestdesc.location;
+					tmpextent.length = firsttestdesc.length;
+					tmpextent.partition_reference = firsttestdesc.partition_reference;
+					metadata_extents.push_back(tmpextent);
+				}
 			}
 			uint32_t _buffoff = 0;
+			if(metadata_partition_buffer==NULL)return;
 			usbdvd_log("Metadata Partition Extents: %lu\r\n",metadata_extents.size());
 			for(unsigned int i=0;i<metadata_extents.size();i++){
 				usbdvd_log("Reading Metadata Partition: LBA %u OFF %u SECTORS: %u\r\n",partitionlba,metadata_extents[i].location,metadata_extents[i].length/DATA_SECTOR_SIZE);
@@ -713,9 +723,7 @@ CUSBDVD_UDFFS::CUSBDVD_UDFFS(std::string _filename)
 				_buffoff+=metadata_extents[i].length;	
 				
 			}
-			
-			
-			if(metadata_partition_buffer==NULL)return;
+
 			
 			// DOING SEQUENTIAL READ OF METADATA PARTITION 
 			//uint8_t bigbuffer[root_filentry.info_len];
