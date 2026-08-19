@@ -261,7 +261,15 @@ CSWITCH_USB::CSWITCH_USB(bool _unfilter_subclass6,bool verboseinit){
             //device_found = true;
             device_found = check_is_optical();
             
-            if(!device_found)continue;
+			if(!device_found){
+
+				usbHsEpClose(&endpoint_out);
+				usbHsEpClose(&endpoint_in);
+				usbHsIfClose(usb_if_session);
+				e_in = false;
+				e_out = false;
+				continue;
+			}
             
             
             if(verboseinit){
