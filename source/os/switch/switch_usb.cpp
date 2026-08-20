@@ -77,6 +77,7 @@ CSWITCH_USB::CSWITCH_USB(bool _unfilter_subclass6,bool verboseinit){
     
     bool e_in = false;
     bool e_out = false;
+	bool if_session_open = false;
     int total_entries_sub02 = 0;
     int total_entries_sub06 = 0;
     int total_entries = 0;
@@ -212,6 +213,7 @@ CSWITCH_USB::CSWITCH_USB(bool _unfilter_subclass6,bool verboseinit){
         rc = usbHsAcquireUsbIf(usb_if_session, &dvd_usbinterfaces[i]);
         
         if (R_SUCCEEDED(rc)) {
+			if_session_open = true;
             if (xfer_buf) {
                 u32 transferredSize=0;
                 memset(xfer_buf,0,USB_TRANS_BUF_SIZE);
@@ -231,8 +233,8 @@ CSWITCH_USB::CSWITCH_USB(bool _unfilter_subclass6,bool verboseinit){
                         }
                         rc = usbHsIfOpenUsbEp(usb_if_session, &endpoint_out, 1, ep_desc->wMaxPacketSize, ep_desc);
                         //usbdvd_log("usbHsIfOpenUsbEp returned: 0x%x\n", rc);
-                        e_out = true;
                         if (R_FAILED(rc)) break;
+						e_out = true;
                     }
                     ep_desc = &usb_if_session->inf.inf.input_endpoint_descs[epi];
                     if (ep_desc->bLength != 0 && (ep_desc->bEndpointAddress & USB_ENDPOINT_IN)) {
@@ -240,10 +242,10 @@ CSWITCH_USB::CSWITCH_USB(bool _unfilter_subclass6,bool verboseinit){
                         if(verboseinit){
                             printf("Using INPUT endpoint %d\n", epi);
                         }
-                        e_in = true;
                         rc = usbHsIfOpenUsbEp(usb_if_session, &endpoint_in, 1, ep_desc->wMaxPacketSize, ep_desc);
                         //usbdvd_log("usbHsIfOpenUsbEp returned: 0x%x\n", rc);
                         if (R_FAILED(rc)) break;
+						e_in = true;
                     }
 
                     if (e_in && e_out) break;
@@ -268,6 +270,7 @@ CSWITCH_USB::CSWITCH_USB(bool _unfilter_subclass6,bool verboseinit){
 				usbHsIfClose(usb_if_session);
 				e_in = false;
 				e_out = false;
+				if_session_open = false;
 				continue;
 			}
             
@@ -302,7 +305,7 @@ CSWITCH_USB::CSWITCH_USB(bool _unfilter_subclass6,bool verboseinit){
     
     
     cleanup_if:
-        usbHsIfClose(&inf_session);
+		if(if_session_open) usbHsIfClose(&inf_session);
     cleanup_event:
         usbHsDestroyInterfaceAvailableEvent(&dvd_usbInterfaceAvailableEvent_sub02, 0);
         usbHsDestroyInterfaceAvailableEvent(&dvd_usbInterfaceAvailableEvent_sub06, 0);
