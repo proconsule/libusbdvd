@@ -2,10 +2,6 @@
 
 libusbdvd is a c++ library for HorizonOS supporting CD/DVD Drives.
 
-Started as P.O.C. for DVD support for [libusbhsfs](https://github.com/DarkMatterCore/libusbhsfs) now is a
-DVD/BD drive support library with all major optical fs supported
-
-
 Current support:
  - USB-DVD USB-BD Drives with USB MASS STORAGE SUBCLASS 0x02
  - USB-DVD USB-BD Drives with USB MASS STORAGE SUBCLASS 0x06 (many Blu-ray drives)
