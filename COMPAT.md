@@ -1,6 +1,6 @@
 ## Compatibility List
 
-This is the list of tested drives
+This is the list of tested drives (in any case, even if they haven't been tested, the drives will likely work without issues)
 
 
 DVD
