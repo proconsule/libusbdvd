@@ -131,11 +131,23 @@ void print_drive_info(usbdvd_obj* test,char * _path){
 			
 			
 			
-			// Standatd FS Directory Listing
-			
-			DIR *d;
+			int list_header_row = (usbdvdctx->dvd_protection.CSS || usbdvdctx->bluray_protection.AACS) ? 19 : 17;
+			int list_status_row = list_header_row + 1;
+			int list_start_row = list_header_row + 2;
+			int list_end_row = 38; 
+			int visible_rows = list_end_row - list_start_row + 1;
+			if(visible_rows < 1) visible_rows = 1;
+
+			uint32_t scroll_offset = 0;
+			if(cursor_idx >= (uint32_t)visible_rows){
+				scroll_offset = cursor_idx - (uint32_t)visible_rows + 1;
+			}
+
+			for(int r = list_status_row; r <= list_end_row; r++){
+				printf(CONSOLE_ESC(%d;1H)CONSOLE_ESC(2K),r);
+			}
+
 			DIR *dir;
-			struct stat file_stat;
 			memset(currentry.currname,0,sizeof(currentry.currname));
 			dir = opendir(path);
 			uint32_t fidx = 0;
@@ -157,21 +169,38 @@ void print_drive_info(usbdvd_obj* test,char * _path){
 						continue;
 					}
 					
-					char size_str[50];
-					formatBytes(st.st_size,size_str,sizeof(size_str));
-					
-					char date_str[20];
-					unixToDate(st.st_mtime, date_str, sizeof(date_str));
-					
-					
-					if(fidx==cursor_idx){
-						printf(CONSOLE_ESC(1m)"->\t%s %s %s %s\n"CONSOLE_ESC(0m),st.st_mode == S_IFDIR ? "<dir> ":"<file>",dir->fileData.d_name,date_str,size_str);
+					bool is_selected = (fidx==cursor_idx);
+					bool is_visible = (fidx >= scroll_offset && fidx < scroll_offset + (uint32_t)visible_rows);
+
+					if(is_selected){
 						memset(currentry.currname,0,sizeof(currentry.currname));
 						sprintf(currentry.currname,"%s",dir->fileData.d_name);
 						currentry.isdir = st.st_mode == S_IFDIR;
-					}else{
-						printf(CONSOLE_ESC(0m)"\t%s %s %s %s\n"CONSOLE_ESC(0m),st.st_mode == S_IFDIR ? "<dir> ":"<file>",dir->fileData.d_name,date_str,size_str);
+					}
+
+					if(is_visible){
+						char size_str[50];
+						formatBytes(st.st_size,size_str,sizeof(size_str));
 						
+						char date_str[20];
+						unixToDate(st.st_mtime, date_str, sizeof(date_str));
+
+						char name_display[40];
+						if(strlen(dir->fileData.d_name) >= sizeof(name_display)){
+							snprintf(name_display,sizeof(name_display),"%.*s..",(int)sizeof(name_display)-3,dir->fileData.d_name);
+						}else{
+							snprintf(name_display,sizeof(name_display),"%s",dir->fileData.d_name);
+						}
+
+						int row = list_start_row + (int)(fidx - scroll_offset);
+						printf(CONSOLE_ESC(%d;1H)"%s%-2s %-6s %-39s %s %10s"CONSOLE_ESC(0m),
+						       row,
+						       is_selected ? CONSOLE_ESC(1m) : CONSOLE_ESC(0m),
+						       is_selected ? "->" : "  ",
+						       st.st_mode == S_IFDIR ? "<dir>" : "<file>",
+						       name_display,
+						       date_str,
+						       size_str);
 					}
 					
 					fidx++;
@@ -179,13 +208,23 @@ void print_drive_info(usbdvd_obj* test,char * _path){
 						
 				closedir(dir);
 				currlist_len = fidx;
+
+				if(currlist_len > 0){
+					uint32_t last_shown = scroll_offset + (uint32_t)visible_rows;
+					if(last_shown > currlist_len) last_shown = currlist_len;
+					printf(CONSOLE_ESC(%d;1H)"File %u-%u di %u%s%s",
+					       list_status_row,
+					       scroll_offset+1, last_shown, currlist_len,
+					       scroll_offset > 0 ? "  (^ more above)" : "",
+					       last_shown < currlist_len ? "  (v more bottom)" : "");
+				}
 			}
 			
 		}
 		if(usbdvdctx->fs.mounted && strcmp(_path,"") != 0){
 			printf(CONSOLE_ESC(40;5H)CONSOLE_ESC(1m)"Y"CONSOLE_ESC(0m)": Eject Drive "CONSOLE_ESC(1m)"X"CONSOLE_ESC(0m)": Mount Drive "CONSOLE_ESC(1m)"UP/Down"CONSOLE_ESC(0m)": Navigation "CONSOLE_ESC(1m)"A"CONSOLE_ESC(0m)": Select "CONSOLE_ESC(1m)"B"CONSOLE_ESC(0m)": Back\n");
 			if(!currentry.isdir && strlen(currentry.currname) > 0){
-				printf(CONSOLE_ESC(41;5H)CONSOLE_ESC(1m)"MINUS"CONSOLE_ESC(0m)": Speed Test su file selezionato\n");
+				printf(CONSOLE_ESC(41;5H)CONSOLE_ESC(1m)"MINUS"CONSOLE_ESC(0m)": Speed Test su on selected file\n");
 			}
 		}else{
 			
@@ -285,14 +324,14 @@ void run_speed_test(const char *fullpath){
 	consoleUpdate(NULL);
 
 	speedtest_result.small_buf_ok = speedtest_run_pass(fullpath,SPEEDTEST_SMALL_BUF,8,
-					"Buffer piccolo (128KB)",
+					"small buffer (128KB)",
 					&speedtest_result.small_buf_bytes,
 					&speedtest_result.small_buf_secs);
 	if(speedtest_result.small_buf_ok && speedtest_result.small_buf_secs > 0){
 		speedtest_result.small_buf_mbps = (speedtest_result.small_buf_bytes/1024.0/1024.0) / speedtest_result.small_buf_secs;
 	}
 
-	speedtest_result.large_buf_ok = speedtest_run_pass(fullpath,SPEEDTEST_LARGE_BUF,9,"Buffer grande (4MB)   ",
+	speedtest_result.large_buf_ok = speedtest_run_pass(fullpath,SPEEDTEST_LARGE_BUF,9,"large buffer (4MB)   ",
 			&speedtest_result.large_buf_bytes,
 			&speedtest_result.large_buf_secs);
 	if(speedtest_result.large_buf_ok && speedtest_result.large_buf_secs > 0){
@@ -304,34 +343,34 @@ void run_speed_test(const char *fullpath){
 
 void print_speed_test_result(usbdvd_obj* test){
 	printf( CONSOLE_ESC(2J) );
-	printf(CONSOLE_ESC(3;2H)CONSOLE_ESC(1m)"SPEED TEST - RISULTATI"CONSOLE_ESC(0m));
+	printf(CONSOLE_ESC(3;2H)CONSOLE_ESC(1m)"SPEED TEST - RESULTS"CONSOLE_ESC(0m));
 	printf(CONSOLE_ESC(5;2H)"File: %s",speedtest_result.filename);
 
 	if(speedtest_result.small_buf_ok){
-	printf(CONSOLE_ESC(7;2H)"Buffer piccolo (128KB): "CONSOLE_ESC(1m)"%.2f MB/s"CONSOLE_ESC(0m)"  (%llu MB in %.2fs)",
+	printf(CONSOLE_ESC(7;2H)"small buffer (128KB): "CONSOLE_ESC(1m)"%.2f MB/s"CONSOLE_ESC(0m)"  (%llu MB in %.2fs)",
 		speedtest_result.small_buf_mbps,
 		(unsigned long long)(speedtest_result.small_buf_bytes/1024/1024),
 		speedtest_result.small_buf_secs);
 	}else{
-		printf(CONSOLE_ESC(7;2H)"Buffer piccolo (128KB): "CONSOLE_ESC(1m)"errore in lettura"CONSOLE_ESC(0m));
+		printf(CONSOLE_ESC(7;2H)"small buffer (128KB): "CONSOLE_ESC(1m)"error reading"CONSOLE_ESC(0m));
 	}
 
 	if(speedtest_result.large_buf_ok){
-		printf(CONSOLE_ESC(8;2H)"Buffer grande (4MB):    "CONSOLE_ESC(1m)"%.2f MB/s"CONSOLE_ESC(0m)"  (%llu MB in %.2fs)",
+		printf(CONSOLE_ESC(8;2H)"large buffer (4MB):    "CONSOLE_ESC(1m)"%.2f MB/s"CONSOLE_ESC(0m)"  (%llu MB in %.2fs)",
 		speedtest_result.large_buf_mbps,
 			(unsigned long long)(speedtest_result.large_buf_bytes/1024/1024),
 			speedtest_result.large_buf_secs);
 	}else{
-		printf(CONSOLE_ESC(8;2H)"Buffer grande (4MB):    "CONSOLE_ESC(1m)"errore in lettura"CONSOLE_ESC(0m));
+		printf(CONSOLE_ESC(8;2H)"large buffer (4MB):    "CONSOLE_ESC(1m)"error reading"CONSOLE_ESC(0m));
 	}
 
 	if(speedtest_result.small_buf_ok && speedtest_result.large_buf_ok && speedtest_result.small_buf_mbps > 0){
-		printf(CONSOLE_ESC(10;2H)"Rapporto buffer grande / buffer piccolo: "CONSOLE_ESC(1m)"%.2fx"CONSOLE_ESC(0m),
+		printf(CONSOLE_ESC(10;2H)"ratio large buffer / small buffer: "CONSOLE_ESC(1m)"%.2fx"CONSOLE_ESC(0m),
 		speedtest_result.large_buf_mbps / speedtest_result.small_buf_mbps);
 	}
 
 	{
-		const char *support_labels[] = {"non ancora provato","SUPPORTATO","non supportato"};
+		const char *support_labels[] = {"not tested","SUPPORTED","not supported"};
 		int ra = usbdvd_get_read_ahead_support(test);
 		int sm = usbdvd_get_streaming_mode_support(test);
 		if(ra < 0 || ra > 2) ra = 0;
@@ -340,7 +379,7 @@ void print_speed_test_result(usbdvd_obj* test){
 		printf(CONSOLE_ESC(13;2H)"SET STREAMING  (0xB6): "CONSOLE_ESC(1m)"%s"CONSOLE_ESC(0m),support_labels[sm]);
 	}
 
-	printf(CONSOLE_ESC(40;2H)CONSOLE_ESC(1m)"B"CONSOLE_ESC(0m)": Torna al browser");
+	printf(CONSOLE_ESC(40;2H)CONSOLE_ESC(1m)"B"CONSOLE_ESC(0m)": Back to browser");
 	consoleUpdate(NULL);
 }
 
