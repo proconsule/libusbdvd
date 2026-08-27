@@ -59,3 +59,6 @@ Thanks to
 
 - DarkMatterCore for libusbhsfs https://github.com/DarkMatterCore/libusbhsfs
 - libdvdcss library for titlekey routines https://www.videolan.org/developers/libdvdcss.html
+
+# License
+GPLv2+
